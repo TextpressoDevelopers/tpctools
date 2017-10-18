@@ -87,12 +87,16 @@ def main():
                     subdir = "C. elegans"
                     if namescheme == "wb":
                         pdfname = "WBPaper" + str(pdfname)
+                        if wb_2_pmid[pdfname] in existing_xml_pmids:
+                            shutil.rmtree(os.path.join("C. elegans", pdfname))
                         if pdfname in wb_2_pmid and wb_2_pmid[pdfname] in existing_xml_pmids \
                                 and filetype != "supplemental":
                             continue
                     elif namescheme == "cgc":
                         if str(pdfname).lstrip("0") in papers_cgc_map:
                             pdfname = papers_cgc_map[str(pdfname).lstrip("0")]
+                            if wb_2_pmid[pdfname] in existing_xml_pmids:
+                                shutil.rmtree(os.path.join("C. elegans", pdfname))
                             if pdfname in wb_2_pmid and wb_2_pmid[pdfname] in existing_xml_pmids \
                                     and filetype != "supplemental":
                                 continue
@@ -101,6 +105,8 @@ def main():
                     elif namescheme == "pubmed":
                         if str(pdfname).lstrip("0") in papers_pubmed_map:
                             pdfname = papers_pubmed_map[str(pdfname).lstrip("0")]
+                            if wb_2_pmid[pdfname] in existing_xml_pmids:
+                                shutil.rmtree(os.path.join("C. elegans", pdfname))
                             if str(pdfname).lstrip("0") in existing_xml_pmids:
                                 continue
                         else:
@@ -131,8 +137,6 @@ def main():
                         if pdflink.lower().endswith("_temp.pdf") and pdfname in files_to_download or \
                                         pdflink.lower().endswith("_ocr.pdf") and pdfname in files_to_download:
                             continue
-                    logging.info("Downloading paper: " + pdflink + " to " + os.path.join(args.out_dir, subdir,
-                                                                                         pdfname, pdfname + ".pdf"))
                     if pdfname in files_to_download:
                         link_re = re.search("[0-9]+[\_\-][^\d]+([0-9]+)", pdflink.replace(" ", ""))
                         link_num = 0
@@ -162,6 +166,7 @@ def main():
                 continue
             os.makedirs(os.path.dirname(file_path))
             urllib.request.urlretrieve(pdflink, file_path)
+            logging.info("Downloading paper: " + pdflink + " to " + file_path)
         except urllib.error.HTTPError:
             logging.error("Paper not found: " + pdflink)
             continue
@@ -173,6 +178,7 @@ def main():
     local_files = set(os.listdir(os.path.join(args.out_dir, "C. elegans Supplementals")))
     for file_to_remove in local_files.difference(all_wbpapers):
         shutil.rmtree(os.path.join("C. elegans Supplementals", file_to_remove))
+
 
 if __name__ == '__main__':
     main()

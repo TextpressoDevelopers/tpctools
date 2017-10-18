@@ -141,7 +141,7 @@ done
 
 # download new pdf files incrementally from tazendra
 ## download pdf files
-getpdfs.py -l ${logfile} -L INFO ${PDF_DIR} "${XML_DIR}/PMCOA C. elegans"
+getpdfs.py -l ${logfile} -L INFO "${PDF_DIR}" "${XML_DIR}"
 grep -oP "Downloading paper: .* to \K.*\.pdf" ${logfile} > ${newpdf_list}
 ## download bib info for pdfs
 mkdir -p /usr/local/textpresso/celegans_bib
