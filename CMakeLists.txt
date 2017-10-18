@@ -18,6 +18,9 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 find_package(APR REQUIRED)
 include_directories(${APR_INCLUDE_DIR})
 
+find_package(CImg REQUIRED)
+include_directories(${CImg_INCLUDE_DIRS})
+
 find_package(Lucene++ REQUIRED)
 include_directories(${Lucene++_INCLUDE_DIRS})
 

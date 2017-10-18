@@ -5,9 +5,9 @@
  * Created on Dec, 2013
  */
 
-#include "../../TextpressoCentralGlobalDefinitions.h"
+#include "../TextpressoCentralGlobalDefinitions.h"
 #include "xercesc/util/XMLString.hpp"
-#include "../../TpC/lucene/CaseSensitiveAnalyzer.h"
+#include "../lucene/CaseSensitiveAnalyzer.h"
 #include <uima/api.hpp>
 #include <uima/xmideserializer.hpp>
 #include <cstdio>

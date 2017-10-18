@@ -6,7 +6,7 @@
  */
 
 //#include "../TextpressoCentralGlobals.h"
-#include "../../TextpressoCentralGlobalDefinitions.h"
+#include "../TextpressoCentralGlobalDefinitions.h"
 #include "xercesc/util/XMLString.hpp"
 #include <uima/api.hpp>
 #include <uima/xmideserializer.hpp>
