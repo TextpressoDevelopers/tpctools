@@ -165,6 +165,7 @@ def main():
             logging.info("Downloading paper: " + pdflink + " to " + file_path)
         except urllib.error.HTTPError:
             logging.error("Paper not found: " + pdflink)
+            shutil.rmtree(os.path.dirname(file_path))
             continue
 
     # delete local files that have been removed from server
