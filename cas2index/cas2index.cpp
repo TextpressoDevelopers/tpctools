@@ -39,8 +39,7 @@ int main(int argc, const char* argv[]) {
                 ("subindex-size,s", po::value<int>(&numPapersPerIndex)->default_value(50000),
                  "maximum number of paper per sub-index")
                 ("add-files,a", po::value<string>(&fileList),
-                 "add files listed in the provided file to the existing indices. File names must be in the form"
-                         "<literature_name>/<cas_dir_name>/<cas_file_name>")
+                 "add files listed in the provided file to the existing indices")
                 ("file-list,f", po::value<string>(&onlyFilesList), "create index using only the files provided in the "
                         "list")
                 ("external,e", po::bool_switch()->default_value(false), "Create external index");

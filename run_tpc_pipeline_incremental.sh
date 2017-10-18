@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
 function usage {
+    echo "this is the main tpc pipeline script. It downloads articles from tazendra (C. elegans pdf) and PMCOA (xml), "
+    echo "and converts them into uima cas files with the addition of semantic annotations. The script maintains a list "
+    echo "of the downloaded files and performs incremental updates. It can be executed periodically to maintain an "
+    echo "updated cas files repository"
+    echo
     echo "usage: $(basename $0) [-p]"
     echo "  -p --pdf-dir      directory where raw pdf files will be stored"
     echo "  -x --xml-dir      directory where raw xml files will be stored"
@@ -20,7 +25,7 @@ fi
 
 PDF_DIR="/data/textpresso/raw_files/pdf"
 XML_DIR="/data/textpresso/raw_files/xml"
-CAS2_DIR="/data/textpresso/tpcas"
+CAS2_DIR="/data/textpresso/tpcas-2"
 CAS1_DIR="/data/textpresso/tpcas-1"
 TMP_DIR="/data/textpresso/tmp"
 FTP_MNTPNT="/mnt/pmc_ftp"
@@ -111,49 +116,46 @@ newxml_local_list=$(mktemp)
 mkdir -p ${XML_DIR}
 ## mount pmcoa ftp locally through curl
 curlftpfs ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/ ${FTP_MNTPNT}
-#find ${FTP_MNTPNT} *.gz | xargs ls -d -l --time-style="full-iso" | awk '{if (substr($1,0,1) == "-") print $6, $7, $9}' > ${newxml_list}
-# save list of tazendra files locally
+# retrieve a list of filed on pmcoa
 for dir in ${FTP_MNTPNT}/*; do for subdir in ${dir}/*; do ls -d -l --time-style="full-iso" ${subdir}/* | awk '{print $6, $7, $9}' >> ${newxml_list}; done; done
 if [[ -e ${XML_DIR}/current_filelist.txt ]]
 then
-    # download diff files
+    ## download diff files
     diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $3}' | xargs -I {} tar xfz {} --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C ${XML_DIR}
-    # save new current list
+    ## save new current list
     diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $3}' >> ${XML_DIR}/current_filelist.txt
 else
-    # download all files
+    ## download all files
     awk '{print $3}' ${newxml_list} | xargs -I {} tar xfz {} --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C ${XML_DIR}
-    # save file list as current
+    ## save file list as current
     cp ${newxml_list} ${XML_DIR}/current_filelist.txt
 fi
 umount ${FTP_MNTPNT}
-
-# save new xml local file list
+## save new xml local file list
 cut -d " " -f 3 ${newxml_list} | sed "s/\/mnt\/pmc\_ftp\/.\{2\}\/.\{2\}\///g;s/\.tar\.gz//g" | xargs -I {} echo ${XML_DIR}/{} > ${newxml_local_list}
-
-# compress nxml and put images in a separate directory
+## compress nxml and put images in a separate directory
 cat ${newxml_local_list} | while read line
 do
     gzip $line/*.nxml; mkdir $line/images; ls -d $line/* | grep -v .nxml | grep -v $line/images | xargs -I [] mv [] $line/images
 done
 
 # download new pdf files incrementally from tazendra
+## download pdf files
 getpdfs.py -l ${logfile} -L INFO ${PDF_DIR} "${XML_DIR}/PMCOA C. elegans"
 grep -oP "Downloading paper: .* to \K.*\.pdf" ${logfile} > ${newpdf_list}
-
-# download bib info for pdfs
+## download bib info for pdfs
 mkdir -p /usr/local/textpresso/celegans_bib
 download_pdfinfo.pl /usr/local/textpresso/celegans_bib/
 extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
 
-# generate tpcas-1 from new pdf files
+# generate tpcas-1
+## pdf files
 mkdir -p ${CAS1_DIR}/C.\ elegans
 mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
 cd ${CAS1_DIR}
 articles2cas -i ${PDF_DIR}/C.\ elegans -l ${newpdf_list} -t 1 -o C.\ elegans -p
 articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l ${newpdf_list} -t 1 -o C.\ elegans\ Supplementals -p
-
-# generate tpcas-1 from new nxml files
+# nxml files
 mkdir -p ${CAS1_DIR}/PMCOA
 cd ${CAS1_DIR}
 articles2cas -i "${XML_DIR}" -l <(awk 'BEGIN{FS="/"}{print $NF}' ${newxml_local_list}) -t 2 -o PMCOA -p
@@ -235,15 +237,18 @@ do
 done
 
 # generate bib files for cas files
-# TODO: check from here
 getallbibfiles.sh -p ${N_PROC} ${CAS2_DIR}
 
-if [[ ! -d ${INDEX_DIR} || $(ls ${INDEX_DIR} | grep -v "subindex.config" | wc -l) == "0" ]]
+if [[ ! -d ${INDEX_DIR} || $(ls ${INDEX_DIR} | grep -v "subindex_0" | wc -l) == "0" ]]
 then
     mkdir -p ${INDEX_DIR}
-    createallindexes -p ${N_PROC} ${CAS2_DIR} ${INDEX_DIR}
+    create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR}
 else
-    cas2index -i ${CAS2_DIR} -o ${INDEX_DIR}
+    # TODO modify lists to reflect the actual filepath of new files for pdf
+    ## pdf
+    cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a ${newpdf_list}
+    ## xml
+    cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a <(awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/PMCOA/"$NF}' ${newxml_local_list} | xargs -I {} find "{}" -name  *.tpcas.gz)
 fi
 # cleanup tmp files
 rm -rf ${TMP_DIR}

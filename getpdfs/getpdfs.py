@@ -29,7 +29,7 @@ def main():
                         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="log level")
     parser.add_argument("out_dir", metavar="out_dir", type=str, help="output directory")
     parser.add_argument("xml_dir", metavar="xml_dir", type=str, help="do not download pdfs whose PMID is already "
-                                                                     "present in the provided xml director")
+                                                                     "present in the provided xml directory")
     args = parser.parse_args()
     logging.basicConfig(filename=args.log_file, level=getattr(logging, args.log_level.upper()))
     if args.delete_old:
@@ -51,7 +51,7 @@ def main():
     id = None
     papers_cgc_map = {}
     papers_pubmed_map = {}
-    existing_xml_pmids = set([f for f in os.listdir(args.xml_dir) if os.path.isdir(os.path.join(args.xml_dir, f))])
+    existing_xml_pmids = set([f[3:] for f in os.listdir(args.xml_dir) if os.path.isdir(os.path.join(args.xml_dir, f))])
     wb_2_pmid = {}
     for line in urllib.request.urlopen("http://tazendra.caltech.edu/~postgres/michael/papers.ace"):
         line = line.decode('utf-8')
