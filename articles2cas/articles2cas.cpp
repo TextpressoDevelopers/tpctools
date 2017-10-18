@@ -101,14 +101,14 @@ int main(int argc, const char* argv[]) {
         f.open(dirlist, std::fstream::in);
         string line;
         set<string> dirlist_set;
-        while (f >> line) {
+        while (getline(f, line)) {
             dirlist_set.insert(line);
         }
         f.close();
         f.open(filelist, std::fstream::in);
         string line2;
         set<string> filelist_set;
-        while (f >> line) {
+        while (getline(f, line)) {
             filelist_set.insert(line);
         }
         f.close();

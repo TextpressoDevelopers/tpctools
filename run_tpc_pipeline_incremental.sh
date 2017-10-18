@@ -153,8 +153,8 @@ extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
 mkdir -p ${CAS1_DIR}/C.\ elegans
 mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
 cd ${CAS1_DIR}
-articles2cas -i ${PDF_DIR}/C.\ elegans -l ${newpdf_list} -t 1 -o C.\ elegans -p
-articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l ${newpdf_list} -t 1 -o C.\ elegans\ Supplementals -p
+articles2cas -i ${PDF_DIR}/C.\ elegans -l <(grep -v "Supplementals" ${newpdf_list} | awk 'BEGIN{FS="/"}{print $NF}') -t 1 -o C.\ elegans -p
+articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l <(grep "Supplementals" ${newpdf_list} | awk 'BEGIN{FS="/"}{print $NF}') -t 1 -o C.\ elegans\ Supplementals -p
 # nxml files
 mkdir -p ${CAS1_DIR}/PMCOA
 cd ${CAS1_DIR}
