@@ -114,6 +114,7 @@ newxml_local_list=$(mktemp)
 # download new xml files from pmcoa
 ## create directory for unclassified xml files
 mkdir -p ${XML_DIR}
+mkdir -p ${FTP_MNTPNT}
 ## mount pmcoa ftp locally through curl
 curlftpfs ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/ ${FTP_MNTPNT}
 # retrieve a list of filed on pmcoa
@@ -153,8 +154,8 @@ extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
 mkdir -p ${CAS1_DIR}/C.\ elegans
 mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
 cd ${CAS1_DIR}
-articles2cas -i ${PDF_DIR}/C.\ elegans -l <(grep -v "Supplementals" ${newpdf_list} | awk 'BEGIN{FS="/"}{print $NF}') -t 1 -o C.\ elegans -p
-articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l <(grep "Supplementals" ${newpdf_list} | awk 'BEGIN{FS="/"}{print $NF}') -t 1 -o C.\ elegans\ Supplementals -p
+articles2cas -i ${PDF_DIR}/C.\ elegans -l <(grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.') -t 1 -o C.\ elegans -p
+articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l <(grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g') -t 1 -o C.\ elegans\ Supplementals -p
 # nxml files
 mkdir -p ${CAS1_DIR}/PMCOA
 cd ${CAS1_DIR}
@@ -188,14 +189,13 @@ done
 
 mkdir -p ${TMP_DIR}/tpcas-1/pdf_celegans
 mkdir -p ${TMP_DIR}/tpcas-1/pdf_celegans_sup
-# TODO check if "line" contains only the file name
 grep -v "Supplementals" ${newpdf_list} | while read line
 do
-    find "${CAS1_DIR}/C. elegans/${line}" -name *.tpcas.gz | xargs -I {} cp "{}" ${TMP_DIR}/tpcas-1/pdf_celegans/${line}.tpcas.gz
+    find "${CAS1_DIR}/C. elegans/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')" -name *.tpcas.gz | xargs -I {} cp "{}" ${TMP_DIR}/tpcas-1/pdf_celegans/${line}.tpcas.gz
 done
 grep "Supplementals" ${newpdf_list} | while read line
 do
-    find "${CAS1_DIR}/C. elegans Supplementals/${line}" -name *.tpcas.gz | xargs -I {} cp "{}" ${TMP_DIR}/tpcas-1/pdf_celegans_sup/${line}.tpcas.gz
+    find "${CAS1_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')" -name *.tpcas.gz | xargs -I {} cp "{}" ${TMP_DIR}/tpcas-1/pdf_celegans_sup/${line}.tpcas.gz
 done
 
 ## apply uima analysis
@@ -225,15 +225,15 @@ done
 ## pdf
 grep -v "Supplementals" ${newpdf_list} | while read line
 do
-    mkdir "${CAS2_DIR}/C. elegans/${line}"
-    ln -s "${CAS1_DIR}/C. elegans/${line}/images" "${CAS2_DIR}/C. elegans/${line}/images"
-    find "${CAS1_DIR}/C. elegans/${line}/" -name *.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}' | xargs -I {} cp ${TMP_DIR}/tpcas-1/pdf_celegans/"{}" "${CAS2_DIR}/C. elegans/${line}/"
+    mkdir "${CAS2_DIR}/C. elegans/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')"
+    ln -s "${CAS1_DIR}/C. elegans/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/images" "${CAS2_DIR}/C. elegans/${line}/images"
+    find "${CAS1_DIR}/C. elegans/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/" -name *.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}' | xargs -I {} cp ${TMP_DIR}/tpcas-1/pdf_celegans/"{}" "${CAS2_DIR}/C. elegans/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/"
 done
 grep "Supplementals" ${newpdf_list} | while read line
 do
-    mkdir "${CAS2_DIR}/C. elegans Supplementals/${line}"
-    ln -s "${CAS1_DIR}/C. elegans Supplementals/${line}/images" "${CAS2_DIR}/C. elegans Supplementals/${line}/images"
-    find "${CAS1_DIR}/C. elegans Supplementals/${line}/" -name *.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}' | xargs -I {} cp ${TMP_DIR}/tpcas-1/pdf_celegans/"{}" "${CAS2_DIR}/C. elegans Supplementals/${line}/"
+    mkdir "${CAS2_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')"
+    ln -s "${CAS1_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/images" "${CAS2_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/images"
+    find "${CAS1_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/" -name *.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}' | xargs -I {} cp ${TMP_DIR}/tpcas-1/pdf_celegans/"{}" "${CAS2_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/"
 done
 
 # generate bib files for cas files
@@ -244,9 +244,9 @@ then
     mkdir -p ${INDEX_DIR}
     create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR}
 else
-    # TODO modify lists to reflect the actual filepath of new files for pdf
     ## pdf
-    cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a ${newpdf_list}
+    cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a <(grep -v "Supplemental" | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz)
+    cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a <(grep "Supplemental" | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz)
     ## xml
     cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a <(awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/PMCOA/"$NF}' ${newxml_local_list} | xargs -I {} find "{}" -name  *.tpcas.gz)
 fi

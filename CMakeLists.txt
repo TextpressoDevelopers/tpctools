@@ -78,7 +78,7 @@ install(TARGETS updatecorpuscounter RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/
 install(PROGRAMS cas2index/create_index_multi_literatures.sh cas2index/create_single_index.sh
         ppm2jpg/ppm2jpgCas.sh run_tpc_pipeline_incremental.sh
         getpdfs/getpdfs.py getbibinfoforpdffromserver/download_pdfinfo.pl
-        getbibinfoforpdffromserver/extract_pdfbibinfo.pl
+        getbibinfoforpdffromserver/extract_pdfbibinfo.pl useruploads/run_userupload_pipeline_incremental.sh
         DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 install(TARGETS articles2cas RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

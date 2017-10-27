@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 USERUPLOADS_DIR="/usr/local/textpresso/useruploads"
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
 
 for user_dir in ${USERUPLOADS_DIR}/*
 do
@@ -16,11 +17,11 @@ do
     grep -vxf ${user_dir}/tpcas/processed_files.txt <(ls -1 ${user_dir}/uploadedfiles) > ${tmpfile}
     if [[ $(grep ".pdf" ${tmpfile} | wc -l | awk '{print $1}') != "0" ]]
     then
-        articles2cas -t 1 -i uploadedfiles -o useruploads/${username} -l <(grep ".pdf" ${tmpfile})
+        articles2cas -t 1 -i uploadedfiles -o useruploads/${username} -L <(grep ".pdf" ${tmpfile})
     fi
     if [[ $(grep ".nxml" ${tmpfile} | wc -l | awk '{print $1}') != "0" ]]
     then
-        articles2cas -t 2 -i ${user_dir}/uploadedfiles -o useruploads/${username} -l <(grep ".nxml" ${tmpfile})
+        articles2cas -t 2 -i ${user_dir}/uploadedfiles -o useruploads/${username} -L <(grep ".nxml" ${tmpfile})
     fi
     # TODO process compressed archives
     mv useruploads/${username}/* ${user_dir}/tpcas/
