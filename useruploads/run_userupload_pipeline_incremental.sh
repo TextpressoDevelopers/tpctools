@@ -46,10 +46,22 @@ do
     rm ${tmpfile}
     mkdir -p /usr/local/textpresso/tpcas/useruploads/${username}
     cd tpcas
+    find . -mindepth 1 -maxdepth 1 -type d | while read line
+    do
+        casfilename=$(ls ${line}/*.tpcas.gz)
+        bibfilename="${casfilename/.tpcas.gz/.bib}"
+        if [[ ! -f ${bibfilename} ]]
+        then
+            echo -e "author|<not uploaded>\naccession|<not uploaded>\ntype|<not uploaded>\ntitle|<not uploaded>\njournal|<not uploaded>\ncitation|<not uploaded>\nyear|<not uploaded>\nabstract|<not uploaded>" > ${bibfilename}
+        fi
+    done
     find . -mindepth 1 -maxdepth 1 -type d | xargs -I {} ln -s ${user_dir}/tpcas/{} /usr/local/textpresso/tpcas/useruploads/${username}/{}
     if [[ ! -f ${user_dir}/luceneindex ]]
     then
         mkdir -p ${user_dir}/luceneindex
         cas2index -i ${user_dir}/tpcas -o ${user_dir}/luceneindex -s 300000 -e
+        mkdir ${user_dir}/luceneindex/db
+        saveidstodb -i ${user_dir}/luceneindex
+        chmod -R 777 ${user_dir}/luceneindex/db
     fi
 done
