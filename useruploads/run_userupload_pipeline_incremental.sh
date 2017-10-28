@@ -50,7 +50,7 @@ do
     rm -rf ${user_dir}/tmp/
     mkdir -p /usr/local/textpresso/tpcas/useruploads/${username}
     cd tpcas
-    grep -xf <(sed -e 's/\.[^.]*$//' ${user_dir}/tpcas/processed_files.txt) <(find . -mindepth 1 -maxdepth 1 -type d | awk -F"/" '{print $NF}') | while read line
+    grep -xf <(sed -e 's/\.[^.]*$//' ${tmpfile}) <(find . -mindepth 1 -maxdepth 1 -type d | awk -F"/" '{print $NF}') | while read line
     do
         casfilename=$(ls ${line}/*.tpcas.gz)
         bibfilename="${casfilename/.tpcas.gz/.bib}"
@@ -59,7 +59,7 @@ do
             echo -e "author|<not uploaded>\naccession|<not uploaded>\ntype|<not uploaded>\ntitle|<not uploaded>\njournal|<not uploaded>\ncitation|<not uploaded>\nyear|<not uploaded>\nabstract|<not uploaded>" > ${bibfilename}
         fi
     done
-    grep -xf <(sed -e 's/\.[^.]*$//' ${user_dir}/tpcas/processed_files.txt) <(find . -mindepth 1 -maxdepth 1 -type d | awk -F"/" '{print $NF}') | while read line
+    grep -xf <(sed -e 's/\.[^.]*$//' ${tmpfile}) <(find . -mindepth 1 -maxdepth 1 -type d | awk -F"/" '{print $NF}') | while read line
     do
         rm -rf "/usr/local/textpresso/tpcas/useruploads/${username}/${line}"
         ln -s "${user_dir}/tpcas/${line}" "/usr/local/textpresso/tpcas/useruploads/${username}/${line}"
