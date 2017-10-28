@@ -78,3 +78,5 @@ then
         fi
     done
 fi
+
+chown -R www-data:www-data ${USERUPLOADS_DIR}
