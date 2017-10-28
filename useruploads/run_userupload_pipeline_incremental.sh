@@ -59,7 +59,11 @@ do
             echo -e "author|<not uploaded>\naccession|<not uploaded>\ntype|<not uploaded>\ntitle|<not uploaded>\njournal|<not uploaded>\ncitation|<not uploaded>\nyear|<not uploaded>\nabstract|<not uploaded>" > ${bibfilename}
         fi
     done
-    grep -xf <(sed -e 's/\.[^.]*$//' ${tmpfile}) <(find . -mindepth 1 -maxdepth 1 -type d) | awk -F"/" '{print $NF}' | xargs -I {} ln -s ${user_dir}/tpcas/{} /usr/local/textpresso/tpcas/useruploads/${username}/{}
+    grep -xf <(sed -e 's/\.[^.]*$//' ${tmpfile}) <(find . -mindepth 1 -maxdepth 1 -type d) | awk -F"/" '{print $NF}' | while read line
+    do
+        rm -rf "/usr/local/textpresso/tpcas/useruploads/${username}/${line}"
+        ln -s "${user_dir}/tpcas/${line}" "/usr/local/textpresso/tpcas/useruploads/${username}/${line}"
+    done
     cat ${tmpfile} >> ${user_dir}/tpcas/processed_files.txt
     rm ${tmpfile}
     if [[ ! -d ${user_dir}/luceneindex ]]
