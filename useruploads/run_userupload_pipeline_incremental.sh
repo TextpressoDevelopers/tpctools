@@ -24,7 +24,10 @@ do
         articles2cas -t 2 -i ${user_dir}/uploadedfiles -o useruploads/${username} -L <(grep ".nxml" ${tmpfile})
     fi
     # TODO process compressed archives
-    mv useruploads/${username}/* ${user_dir}/tpcas/
+    if [[ $(ls useruploads/${username}/ | wc -l) != "0" ]]
+    then
+        mv useruploads/${username}/* ${user_dir}/tpcas/
+    fi
     rm -rf useruploads
     cat ${tmpfile} >> ${user_dir}/tpcas/tokenized_files.txt
     grep -xf <(sed -e 's/\.[^.]*$//' ${tmpfile}) <(ls ${user_dir}/tpcas/) | xargs -I {} cp ${user_dir}/tpcas/{}/{}.tpcas  ${user_dir}/tmp/cas1
@@ -32,21 +35,22 @@ do
     then
         runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${user_dir}/tmp/cas1 ${user_dir}/tmp/cas2
     fi
-    for tpcas2_file in $(ls ${user_dir}/tmp/cas2/*)
-    do
-        mv ${tpcas2_file} ${user_dir}/tpcas/$(basename ${tpcas2_file} | sed -e 's/\.[^.]*$//')
-        if [[ -f ${user_dir}/uploadedfiles/$(basename ${tpcas2_file} | sed -e 's/\.[^.]*$//').bib ]]
-        then
-            cp ${user_dir}/uploadedfiles/$(basename ${tpcas2_file} | sed -e 's/\.[^.]*$//').bib ${user_dir}/tpcas/$(basename ${tpcas2_file} | sed -e 's/\.[^.]*$//')
-        fi
-        gzip ${user_dir}/tpcas/$(basename ${tpcas2_file} | sed -e 's/\.[^.]*$//')/$(basename ${tpcas2_file})
-    done
+    if [[ $(ls ${user_dir}/tmp/cas2/ | wc -l) != "0" ]]
+    then
+        for tpcas2_file in $(ls ${user_dir}/tmp/cas2/*)
+        do
+            mv ${tpcas2_file} ${user_dir}/tpcas/$(basename ${tpcas2_file} | sed -e 's/\.[^.]*$//')
+            if [[ -f ${user_dir}/uploadedfiles/$(basename ${tpcas2_file} | sed -e 's/\.[^.]*$//').bib ]]
+            then
+                cp ${user_dir}/uploadedfiles/$(basename ${tpcas2_file} | sed -e 's/\.[^.]*$//').bib ${user_dir}/tpcas/$(basename ${tpcas2_file} | sed -e 's/\.[^.]*$//')
+            fi
+            gzip ${user_dir}/tpcas/$(basename ${tpcas2_file} | sed -e 's/\.[^.]*$//')/$(basename ${tpcas2_file})
+        done
+    fi
     rm -rf ${user_dir}/tmp/
-    cat ${tmpfile} >> ${user_dir}/tpcas/processed_files.txt
-    rm ${tmpfile}
     mkdir -p /usr/local/textpresso/tpcas/useruploads/${username}
     cd tpcas
-    find . -mindepth 1 -maxdepth 1 -type d | while read line
+    grep -xf <(sed -e 's/\.[^.]*$//' ${tmpfile}) <(find . -mindepth 1 -maxdepth 1 -type d) | while read line
     do
         casfilename=$(ls ${line}/*.tpcas.gz)
         bibfilename="${casfilename/.tpcas.gz/.bib}"
@@ -55,8 +59,10 @@ do
             echo -e "author|<not uploaded>\naccession|<not uploaded>\ntype|<not uploaded>\ntitle|<not uploaded>\njournal|<not uploaded>\ncitation|<not uploaded>\nyear|<not uploaded>\nabstract|<not uploaded>" > ${bibfilename}
         fi
     done
-    find . -mindepth 1 -maxdepth 1 -type d | xargs -I {} ln -s ${user_dir}/tpcas/{} /usr/local/textpresso/tpcas/useruploads/${username}/{}
-    if [[ ! -f ${user_dir}/luceneindex ]]
+    grep -xf <(sed -e 's/\.[^.]*$//' ${tmpfile}) <(find . -mindepth 1 -maxdepth 1 -type d) | awk -F"/" '{print $NF}' | xargs -I {} ln -s ${user_dir}/tpcas/{} /usr/local/textpresso/tpcas/useruploads/${username}/{}
+    cat ${tmpfile} >> ${user_dir}/tpcas/processed_files.txt
+    rm ${tmpfile}
+    if [[ ! -d ${user_dir}/luceneindex ]]
     then
         mkdir -p ${user_dir}/luceneindex
         cas2index -i ${user_dir}/tpcas -o ${user_dir}/luceneindex -s 300000 -e
