@@ -3,6 +3,5 @@ cmake-build*
 **/build/
 **/dist/
 **/nbproject/
-/pgdumps/
 *~
 /tpctl.config

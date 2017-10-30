@@ -2,6 +2,7 @@
 
 USERUPLOADS_DIR="/usr/local/textpresso/useruploads"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
+export PATH=$PATH:/usr/local/lib
 
 if [[ $(ls ${USERUPLOADS_DIR} | wc -l) != "0" ]]
 then
