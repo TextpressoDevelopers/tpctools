@@ -69,7 +69,7 @@ then
         done
         cat ${tmpfile} >> ${user_dir}/tpcas/processed_files.txt
         rm ${tmpfile}
-        if [[ ! -d ${user_dir}/luceneindex ]]
+        if [[ ! -d ${user_dir}/luceneindex && $(wc -l "${user_dir}/tpcas/processed_files.txt" | awk '{print $1}') -gt 1 ]]
         then
             mkdir -p ${user_dir}/luceneindex
             cas2index -i ${user_dir}/tpcas -o ${user_dir}/luceneindex -s 300000 -e
