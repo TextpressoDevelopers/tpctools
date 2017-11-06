@@ -47,4 +47,5 @@ int main(int argc, const char* argv[]) {
     }
     tpc::index::IndexManager indexManager(inputDir, false, false);
     indexManager.save_all_doc_ids_for_sentences_to_db();
+    indexManager.save_all_years_for_documents_to_db();
 }
