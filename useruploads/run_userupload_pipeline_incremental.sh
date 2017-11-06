@@ -17,6 +17,14 @@ then
         touch ${user_dir}/tpcas/processed_files.txt
         touch ${user_dir}/tpcas/tokenized_files.txt
         tmpfile=$(mktemp)
+        if [[ $(ls ${user_dir}/uploadedfiles/*.tar.gz | wc -l | awk '{print $1}') != "0" ]]
+        then
+            for compfile in $(ls ${user_dir}/uploadedfiles/*.tar.gz)
+            do
+                tar xf ${compfile} -C ${user_dir}/uploadedfiles/
+                rm ${compfile}
+            done
+        fi
         grep -vxf ${user_dir}/tpcas/processed_files.txt <(ls -1 ${user_dir}/uploadedfiles) > ${tmpfile}
         if [[ $(grep ".pdf" ${tmpfile} | wc -l | awk '{print $1}') != "0" ]]
         then
@@ -26,7 +34,6 @@ then
         then
             articles2cas -t 2 -i ${user_dir}/uploadedfiles -o useruploads/${username} -L <(grep ".nxml" ${tmpfile})
         fi
-        # TODO process compressed archives
         if [[ $(ls useruploads/${username}/ | wc -l) != "0" ]]
         then
             mv useruploads/${username}/* ${user_dir}/tpcas/
