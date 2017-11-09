@@ -51,6 +51,7 @@ def main():
     papers_cgc_map = {}
     papers_pubmed_map = {}
     wb_2_pmid = {}
+    invalid_papers = set()
     for line in urllib.request.urlopen("http://tazendra.caltech.edu/~postgres/michael/papers.ace"):
         line = line.decode('utf-8')
         linearr = line.strip().split()
@@ -62,6 +63,8 @@ def main():
             elif len(linearr) >= 4 and linearr[0] == "Database" and linearr[2] == "\"PMID\"":
                 papers_pubmed_map[linearr[3][1:len(linearr[3])-1]] = id
                 wb_2_pmid[id] = linearr[3][1:len(linearr[3])-1]
+            elif linearr[0] == "Status" and linearr[1] == "\"Invalid\"":
+                invalid_papers.add(id)
 
     # read papers list and map them
     p = re.compile('href="(.*)"')
@@ -96,7 +99,7 @@ def main():
                         else:
                             continue
                         subdir = "C. elegans"
-                    if pdfname in non_nematode_papers:
+                    if pdfname in non_nematode_papers or pdfname in invalid_papers:
                         continue
                     if filetype == "supplemental":
                         subdir = "C. elegans Supplementals"
