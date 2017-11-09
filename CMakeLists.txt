@@ -73,27 +73,21 @@ target_link_libraries(saveidstodb lucene++ boost_filesystem boost_system boost_p
 add_executable(cmykinverter CMYKInverter/CMYKModifier.h CMYKInverter/CMYKModifier.cpp CMYKInverter/main.cpp)
 target_link_libraries(cmykinverter ${ImageMagick_LIBRARIES} boost_system boost_filesystem)
 
+add_executable(curationtasks curationtasks/main.cpp)
+target_link_libraries(curationtasks lucene++ boost_filesystem boost_system boost_regex boost_program_options
+        ${Textpresso_LIBRARY})
+
+add_executable(diffhtml diffhtml/main.cpp diffhtml/cmdline.h)
+
 #### INSTALL ####
 
-install(TARGETS getbib getbib4nxml
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib)
-
-install(TARGETS cas2index RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(TARGETS saveidstodb RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(TARGETS updatecorpuscounter RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(TARGETS cmykinverter RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(TARGETS indexmerger RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(TARGETS getbib getbib4nxml cas2index saveidstodb updatecorpuscounter articles2cas
+        curationtasks diffhtml cmykinverter indexmerger
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 install(PROGRAMS cas2index/create_index_multi_literatures.sh cas2index/create_single_index.sh
         ppm2jpg/ppm2jpgCas.sh run_tpc_pipeline_incremental.sh
         getpdfs/getpdfs.py getbibinfoforpdffromserver/download_pdfinfo.pl
         getbibinfoforpdffromserver/extract_pdfbibinfo.pl useruploads/run_userupload_pipeline_incremental.sh
-        pgdumps/dump.sh getbib/getallbibfiles.sh
+        pgdumps/dump.sh articles2cas/convertallarticles2cas.sh curationtasks/unpublished_pipeline.sh
+        getbib/getallbibfiles.sh
         DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-
-install(TARGETS articles2cas RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(PROGRAMS articles2cas/convertallarticles2cas.sh
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-
-
-
