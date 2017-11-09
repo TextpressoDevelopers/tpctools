@@ -28,7 +28,6 @@ def main():
     parser.add_argument("-L", "--log-level", metavar="log_level", dest="log_level", default="INFO",
                         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="log level")
     parser.add_argument("out_dir", metavar="out_dir", type=str, help="output directory")
-    parser.add_argument("xml_dir", metavar="xml_dir", type=str, help="do not download pdfs whose PMID is already "
                                                                      "present in the provided xml directory")
     args = parser.parse_args()
     logging.basicConfig(filename=args.log_file, level=getattr(logging, args.log_level.upper()))
@@ -51,7 +50,6 @@ def main():
     id = None
     papers_cgc_map = {}
     papers_pubmed_map = {}
-    existing_xml_pmids = set([f[3:] for f in os.listdir(args.xml_dir) if os.path.isdir(os.path.join(args.xml_dir, f))])
     wb_2_pmid = {}
     for line in urllib.request.urlopen("http://tazendra.caltech.edu/~postgres/michael/papers.ace"):
         line = line.decode('utf-8')
@@ -87,24 +85,14 @@ def main():
                     subdir = "C. elegans"
                     if namescheme == "wb":
                         pdfname = "WBPaper" + str(pdfname)
-                        if pdfname in wb_2_pmid and wb_2_pmid[pdfname] in existing_xml_pmids \
-                                and filetype != "supplemental":
-                            shutil.rmtree(os.path.join(args.out_dir, "C. elegans", pdfname), ignore_errors=True)
-                            continue
                     elif namescheme == "cgc":
                         if str(pdfname).lstrip("0") in papers_cgc_map:
                             pdfname = papers_cgc_map[str(pdfname).lstrip("0")]
-                            if pdfname in wb_2_pmid and wb_2_pmid[pdfname] in existing_xml_pmids \
-                                    and filetype != "supplemental":
-                                continue
                         else:
                             continue
                     elif namescheme == "pubmed":
                         if str(pdfname).lstrip("0") in papers_pubmed_map:
                             pdfname = papers_pubmed_map[str(pdfname).lstrip("0")]
-                            if str(pdfname).lstrip("0") in existing_xml_pmids:
-                                shutil.rmtree(os.path.join(args.out_dir, "C. elegans", pdfname), ignore_errors=True)
-                                continue
                         else:
                             continue
                         subdir = "C. elegans"
