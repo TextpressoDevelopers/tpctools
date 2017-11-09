@@ -137,10 +137,9 @@ cut -d " " -f 3 ${newxml_list} | sed "s/\/mnt\/pmc\_ftp\/.\{2\}\/.\{2\}\///g;s/\
 ## compress nxml and put images in a separate directory
 cat ${newxml_local_list} | xargs -I {} -n1 -P ${N_PROC} sh -c 'gzip "{}"/*.nxml; mkdir "{}"/images; ls -d "{}"/* | grep -v .nxml | grep -v "{}"/images | xargs -I [] mv [] "{}"/images'
 
-# TODO test from here!
 # download new pdf files incrementally from tazendra
 ## download pdf files
-getpdfs.py -l ${logfile} -L INFO "${PDF_DIR}" "${XML_DIR}"
+getpdfs.py -l ${logfile} -L INFO "${PDF_DIR}"
 grep -oP "Downloading paper: .* to \K.*\.pdf" ${logfile} > ${newpdf_list}
 ## download bib info for pdfs
 mkdir -p /usr/local/textpresso/celegans_bib
@@ -152,13 +151,27 @@ extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
 mkdir -p ${CAS1_DIR}/C.\ elegans
 mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
 cd ${CAS1_DIR}
-# TODO parallelize the articles2cas process
-articles2cas -i ${PDF_DIR}/C.\ elegans -l <(grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.') -t 1 -o C.\ elegans -p
-articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l <(grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g') -t 1 -o C.\ elegans\ Supplementals -p
+num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep -v "Supplementals" ${newpdf_list} | wc -l) / ${N_PROC}))")
+for ((i=1; i<=${N_PROC}; i++))
+do
+    articles2cas -i ${PDF_DIR}/C.\ elegans -l <(grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.' | head -n $(($i * $num_papers_to_process_together)) | tail -n ${num_papers_to_process_together}) -t 1 -o C.\ elegans -p &
+done
+wait
+# TODO test from here!
+num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep "Supplementals" ${newpdf_list} | wc -l) / ${N_PROC}))")
+for ((i=1; i<=${N_PROC}; i++))
+do
+    articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l <(grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.' | head -n $(($i * $num_papers_to_process_together)) | tail -n ${num_papers_to_process_together}) -t 1 -o C.\ elegans\ Supplementals -p &
+done
+wait
+
 # nxml files
 mkdir -p ${CAS1_DIR}/PMCOA
 cd ${CAS1_DIR}
-articles2cas -i "${XML_DIR}" -l <(awk 'BEGIN{FS="/"}{print $NF}' ${newxml_local_list}) -t 2 -o PMCOA -p
+num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(wc -l ${newxml_local_list} | awk '{print $1}') / ${N_PROC}))")
+for ((i=1; i<=${N_PROC}; i++))
+do
+    articles2cas -i "${XML_DIR}" -l <(awk 'BEGIN{FS="/"}{print $NF}' ${newxml_local_list} | head -n $(($i * ${num_papers_to_process_together})) | tail -n ${num_papers_to_process_together}) -t 2 -o PMCOA -p &
 
 # add images to tpcas directory and gzip
 ## xml
