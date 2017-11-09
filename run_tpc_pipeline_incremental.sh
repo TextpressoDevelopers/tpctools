@@ -117,29 +117,25 @@ mkdir -p ${XML_DIR}
 mkdir -p ${FTP_MNTPNT}
 ## mount pmcoa ftp locally through curl
 curlftpfs ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/ ${FTP_MNTPNT}
-# retrieve a list of filed on pmcoa
+# retrieve a list of files on pmcoa
 for dir in ${FTP_MNTPNT}/*; do for subdir in ${dir}/*; do ls -d -l --time-style="full-iso" ${subdir}/* | awk '{print $6, $7, $9}' >> ${newxml_list}; done; done
+umount ${FTP_MNTPNT}
 if [[ -e ${XML_DIR}/current_filelist.txt ]]
 then
     ## download diff files
-    diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $3}' | xargs -n 1 -P ${N_PROC} -I {} tar xfz {} --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C ${XML_DIR}
+    diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $3}' | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' | xargs -n 1 -P ${N_PROC} -I {} sh -c 'wget -qO- "ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{}" | tar xfz - --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C '"${XML_DIR}"
     ## save new current list
     diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $3}' >> ${XML_DIR}/current_filelist.txt
 else
     ## download all files
-    awk '{print $3}' ${newxml_list} | xargs -n 1 -P ${N_PROC} -I {} tar xfz {} --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C ${XML_DIR}
+    awk '{print $3}' ${newxml_list} | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' | xargs -n 1 -P ${N_PROC} -I {} sh -c 'wget -qO- "ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{}" | tar xfz - --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C '"${XML_DIR}"
     ## save file list as current
     cp ${newxml_list} ${XML_DIR}/current_filelist.txt
 fi
-# TODO test from here!
-umount ${FTP_MNTPNT}
 ## save new xml local file list
 cut -d " " -f 3 ${newxml_list} | sed "s/\/mnt\/pmc\_ftp\/.\{2\}\/.\{2\}\///g;s/\.tar\.gz//g" | xargs -I {} echo ${XML_DIR}/{} > ${newxml_local_list}
 ## compress nxml and put images in a separate directory
-cat ${newxml_local_list} | while read line
-do
-    gzip $line/*.nxml; mkdir $line/images; ls -d $line/* | grep -v .nxml | grep -v $line/images | xargs -I [] mv [] $line/images
-done
+cat ${newxml_local_list} | xargs -I {} -n1 -P ${N_PROC} sh -c 'gzip "{}"/*.nxml; mkdir "{}"/images; ls -d "{}"/* | grep -v .nxml | grep -v "{}"/images | xargs -I [] mv [] "{}"/images'
 
 # download new pdf files incrementally from tazendra
 ## download pdf files
@@ -155,7 +151,9 @@ extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
 mkdir -p ${CAS1_DIR}/C.\ elegans
 mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
 cd ${CAS1_DIR}
+# TODO parallelize the articles2cas process
 articles2cas -i ${PDF_DIR}/C.\ elegans -l <(grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.') -t 1 -o C.\ elegans -p
+# TODO test from here!
 articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l <(grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g') -t 1 -o C.\ elegans\ Supplementals -p
 # nxml files
 mkdir -p ${CAS1_DIR}/PMCOA
