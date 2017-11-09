@@ -101,10 +101,12 @@ def main():
                         subdir = "C. elegans"
                     if pdfname in non_nematode_papers or pdfname in invalid_papers:
                         if len(glob.glob(os.path.join(args.out_dir, "C. elegans", pdfname + "*"))) > 0:
-                            shutil.rmtree(os.path.join("C. elegans", pdfname + "*"))
+                            for file in glob.glob(os.path.join(args.out_dir, "C. elegans", pdfname + "*")):
+                                shutil.rmtree(file)
                             logging.info("Removing invalid paper " + os.path.join(args.out_dir, "C. elegans", pdfname))
                         if len(glob.glob(os.path.join(args.out_dir, "C. elegans Supplementals", pdfname + "*"))) > 0:
-                            shutil.rmtree(os.path.join("C. elegans Supplementals", pdfname + "*"))
+                            for file in glob.glob(os.path.join(args.out_dir, "C. elegans Supplementals", pdfname + "*")):
+                                shutil.rmtree(file)
                             logging.info("Removing invalid paper " + os.path.join(args.out_dir,
                                                                                   "C. elegans Supplementals", pdfname))
                         continue
