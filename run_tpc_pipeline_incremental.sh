@@ -137,6 +137,7 @@ cut -d " " -f 3 ${newxml_list} | sed "s/\/mnt\/pmc\_ftp\/.\{2\}\/.\{2\}\///g;s/\
 ## compress nxml and put images in a separate directory
 cat ${newxml_local_list} | xargs -I {} -n1 -P ${N_PROC} sh -c 'gzip "{}"/*.nxml; mkdir "{}"/images; ls -d "{}"/* | grep -v .nxml | grep -v "{}"/images | xargs -I [] mv [] "{}"/images'
 
+# TODO test from here!
 # download new pdf files incrementally from tazendra
 ## download pdf files
 getpdfs.py -l ${logfile} -L INFO "${PDF_DIR}" "${XML_DIR}"
@@ -153,7 +154,6 @@ mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
 cd ${CAS1_DIR}
 # TODO parallelize the articles2cas process
 articles2cas -i ${PDF_DIR}/C.\ elegans -l <(grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.') -t 1 -o C.\ elegans -p
-# TODO test from here!
 articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l <(grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g') -t 1 -o C.\ elegans\ Supplementals -p
 # nxml files
 mkdir -p ${CAS1_DIR}/PMCOA

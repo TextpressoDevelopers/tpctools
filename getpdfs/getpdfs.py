@@ -28,7 +28,7 @@ def main():
     parser.add_argument("-L", "--log-level", metavar="log_level", dest="log_level", default="INFO",
                         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="log level")
     parser.add_argument("out_dir", metavar="out_dir", type=str, help="output directory")
-                                                                     "present in the provided xml directory")
+
     args = parser.parse_args()
     logging.basicConfig(filename=args.log_file, level=getattr(logging, args.log_level.upper()))
     if args.delete_old:
