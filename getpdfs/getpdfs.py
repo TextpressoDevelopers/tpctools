@@ -89,7 +89,7 @@ def main():
                         pdfname = "WBPaper" + str(pdfname)
                         if pdfname in wb_2_pmid and wb_2_pmid[pdfname] in existing_xml_pmids \
                                 and filetype != "supplemental":
-                            shutil.rmtree(os.path.join("C. elegans", pdfname))
+                            shutil.rmtree(os.path.join(args.out_dir, "C. elegans", pdfname), ignore_errors=True)
                             continue
                     elif namescheme == "cgc":
                         if str(pdfname).lstrip("0") in papers_cgc_map:
@@ -103,7 +103,7 @@ def main():
                         if str(pdfname).lstrip("0") in papers_pubmed_map:
                             pdfname = papers_pubmed_map[str(pdfname).lstrip("0")]
                             if str(pdfname).lstrip("0") in existing_xml_pmids:
-                                shutil.rmtree(os.path.join("C. elegans", pdfname))
+                                shutil.rmtree(os.path.join(args.out_dir, "C. elegans", pdfname), ignore_errors=True)
                                 continue
                         else:
                             continue
