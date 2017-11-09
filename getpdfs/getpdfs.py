@@ -100,6 +100,13 @@ def main():
                             continue
                         subdir = "C. elegans"
                     if pdfname in non_nematode_papers or pdfname in invalid_papers:
+                        if len(glob.glob(os.path.join(args.out_dir, "C. elegans", pdfname + "*"))) > 0:
+                            shutil.rmtree(os.path.join("C. elegans", pdfname + "*"))
+                            logging.info("Removing invalid paper " + os.path.join(args.out_dir, "C. elegans", pdfname))
+                        if len(glob.glob(os.path.join(args.out_dir, "C. elegans Supplementals", pdfname + "*"))) > 0:
+                            shutil.rmtree(os.path.join("C. elegans Supplementals", pdfname + "*"))
+                            logging.info("Removing invalid paper " + os.path.join(args.out_dir,
+                                                                                  "C. elegans Supplementals", pdfname))
                         continue
                     if filetype == "supplemental":
                         subdir = "C. elegans Supplementals"
@@ -162,10 +169,12 @@ def main():
     # delete local files that have been removed from server
     local_files = set(os.listdir(os.path.join(args.out_dir, "C. elegans")))
     for file_to_remove in local_files.difference(all_wbpapers):
-        shutil.rmtree(os.path.join("C. elegans", file_to_remove))
+        shutil.rmtree(os.path.join(args.out_dir, "C. elegans", file_to_remove))
+        logging.info("Removing deleted paper " + os.path.join("C. elegans", file_to_remove))
     local_files = set(os.listdir(os.path.join(args.out_dir, "C. elegans Supplementals")))
     for file_to_remove in local_files.difference(all_wbpapers):
-        shutil.rmtree(os.path.join("C. elegans Supplementals", file_to_remove))
+        shutil.rmtree(os.path.join(args.out_dir, "C. elegans Supplementals", file_to_remove))
+        logging.info("Removing deleted paper " + os.path.join("C. elegans Supplementals", file_to_remove))
 
 
 if __name__ == '__main__':
