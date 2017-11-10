@@ -26,6 +26,7 @@ int main(int argc, const char* argv[]) {
     path inputdir;
     string indexpath;
     string fileList;
+    string removeList;
     string onlyFilesList;
     int numPapersPerIndex;
 
@@ -42,7 +43,8 @@ int main(int argc, const char* argv[]) {
                  "add files listed in the provided file to the existing indices")
                 ("file-list,f", po::value<string>(&onlyFilesList), "create index using only the files provided in the "
                         "list")
-                ("external,e", po::bool_switch()->default_value(false), "Create external index");
+                ("external,e", po::bool_switch()->default_value(false), "Create external index")
+                ("remove,r", po::value<string>(&removeList));
         p.add("cas-input-directory", 1);
         p.add("index-output-directory", 1);
         po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
@@ -65,21 +67,24 @@ int main(int argc, const char* argv[]) {
     }
     tpc::index::IndexManager indexManager(indexpath, false, true);
     if (!fileList.empty()) {
-        std::hash<std::string> string_hash;
         std::ifstream infile(fileList);
         string filename;
-        string lit;
-        string cas_dirname;
-        vector<string> filename_arr;
         while (std::getline(infile, filename))
         {
-            boost::split(filename_arr, filename, boost::is_any_of("/"));
-            lit = filename_arr[0];
-            cas_dirname = filename_arr[1];
-            indexManager.remove_file_from_index(filename);
+            // TODO check if files are removed
+            indexManager.remove_file_from_index(inputDir + "/" + filename);
             indexManager.add_file_to_index(inputDir + "/" + filename, numPapersPerIndex);
         }
-    } else {
+    } else if (!removeList.empty()) {
+        std::ifstream infile(removeList);
+        string filename;
+        while (std::getline(infile, filename))
+        {
+            // TODO check if files are removed
+            indexManager.remove_file_from_index(inputDir + "/" + filename);
+        }
+    }
+    else {
         std::fstream f;
         f.open(onlyFilesList, std::fstream::in);
         string line;

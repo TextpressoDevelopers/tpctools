@@ -108,6 +108,7 @@ done
 # temp files
 logfile=$(mktemp)
 newpdf_list=$(mktemp)
+removedpdf_list=$(mktemp)
 newxml_list=$(mktemp)
 newxml_local_list=$(mktemp)
 
@@ -141,6 +142,7 @@ cat ${newxml_local_list} | xargs -I {} -n1 -P ${N_PROC} sh -c 'gzip "{}"/*.nxml;
 ## download pdf files
 getpdfs.py -l ${logfile} -L INFO "${PDF_DIR}"
 grep -oP "Downloading paper: .* to \K.*\.pdf" ${logfile} > ${newpdf_list}
+grep -oP "Removing .* paper \K.*" ${logfile} > ${removedpdf_list}
 ## download bib info for pdfs
 mkdir -p /usr/local/textpresso/celegans_bib
 download_pdfinfo.pl /usr/local/textpresso/celegans_bib/
@@ -152,16 +154,19 @@ mkdir -p ${CAS1_DIR}/C.\ elegans
 mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
 cd ${CAS1_DIR}
 num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep -v "Supplementals" ${newpdf_list} | wc -l) / ${N_PROC}))")
+n_lines_to_tail=$(grep -v "Supplementals" ${newpdf_list} | wc -l)
 for ((i=1; i<=${N_PROC}; i++))
 do
-    articles2cas -i ${PDF_DIR}/C.\ elegans -l <(grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.' | head -n $(($i * $num_papers_to_process_together)) | tail -n ${num_papers_to_process_together}) -t 1 -o C.\ elegans -p &
+    articles2cas -i ${PDF_DIR}/C.\ elegans -l <(grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together}) -t 1 -o C.\ elegans -p &
+    n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
 done
 wait
-# TODO test from here!
 num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep "Supplementals" ${newpdf_list} | wc -l) / ${N_PROC}))")
+n_lines_to_tail=$(grep "Supplementals" ${newpdf_list} | wc -l)
 for ((i=1; i<=${N_PROC}; i++))
 do
-    articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l <(grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.' | head -n $(($i * $num_papers_to_process_together)) | tail -n ${num_papers_to_process_together}) -t 1 -o C.\ elegans\ Supplementals -p &
+    articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l <(grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together}) -t 1 -o C.\ elegans\ Supplementals -p &
+    n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
 done
 wait
 
@@ -169,10 +174,14 @@ wait
 mkdir -p ${CAS1_DIR}/PMCOA
 cd ${CAS1_DIR}
 num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(wc -l ${newxml_local_list} | awk '{print $1}') / ${N_PROC}))")
+n_lines_to_tail=$(wc -l ${newxml_local_list} | awk '{print $1}')
 for ((i=1; i<=${N_PROC}; i++))
 do
-    articles2cas -i "${XML_DIR}" -l <(awk 'BEGIN{FS="/"}{print $NF}' ${newxml_local_list} | head -n $(($i * ${num_papers_to_process_together})) | tail -n ${num_papers_to_process_together}) -t 2 -o PMCOA -p &
-
+    articles2cas -i "${XML_DIR}" -l <(awk 'BEGIN{FS="/"}{print $NF}' ${newxml_local_list} | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together}) -t 2 -o PMCOA -p &
+    n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
+done
+wait
+# TODO test from here! - redo pdf conversion for supplementals to cas1
 # add images to tpcas directory and gzip
 ## xml
 cat ${newxml_local_list} | while read line
@@ -185,7 +194,7 @@ done
 ## pdf
 cat ${newpdf_list} | while read line
 do
-    gzip "${CAS1_DIR}/$(echo "${line}" | awk 'BEGIN{FS="/"}{print $NF-2"/"$NF-1"/"$NF}')"
+    gzip "${CAS1_DIR}"/$(echo "${line}" | awk 'BEGIN{FS="/"}{print $NF-2"/"$NF-1"/"$NF}' | sed 's/.pdf/.tpcas/g')
 done
 
 # generate cas2 files from cas1
@@ -257,11 +266,17 @@ then
     create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR}
 else
     ## pdf
-    cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a <(grep -v "Supplemental" | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz)
-    cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a <(grep "Supplemental" | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz)
+    cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a <(grep -v "Supplemental" ${newpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz)
+    cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a <(grep "Supplemental" ${newpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans Supplementals/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz)
     ## xml
     cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a <(awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/PMCOA/"$NF}' ${newxml_local_list} | xargs -I {} find "{}" -name  *.tpcas.gz)
 fi
+
+# remove deleted or invalidated papers from cas dirs and from index
+cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -r <(grep -v "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz)
+cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -r <(grep "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans Supplementals/"$(NF-1)}' | xargs -I {} find "{}"* -name  *.tpcas.gz)
+awk -F"/" '{print $(NF-1)"/"$NF}' ${removedpdf_list} | xargs -I {} sh -c 'rm -rf ${CAS1_DIR}/"{}"*; rm -rf ${CAS2_DIR}/"{}"*'
+
 # cleanup tmp files
 rm -rf ${TMP_DIR}
 rm ${logfile}
