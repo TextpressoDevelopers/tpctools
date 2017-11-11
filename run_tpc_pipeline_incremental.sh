@@ -157,18 +157,25 @@ num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($
 n_lines_to_tail=$(grep -v "Supplementals" ${newpdf_list} | wc -l)
 for ((i=1; i<=${N_PROC}; i++))
 do
-    articles2cas -i ${PDF_DIR}/C.\ elegans -l <(grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together}) -t 1 -o C.\ elegans -p &
+    grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
+    articles2cas -i ${PDF_DIR}/C.\ elegans -l /tmp/tmplist_$i.txt -t 1 -o C.\ elegans -p &>/dev/null &
     n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
 done
 wait
+rm /tmp/tmplist_*.txt
+
 num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep "Supplementals" ${newpdf_list} | wc -l) / ${N_PROC}))")
 n_lines_to_tail=$(grep "Supplementals" ${newpdf_list} | wc -l)
 for ((i=1; i<=${N_PROC}; i++))
 do
-    articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l <(grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together}) -t 1 -o C.\ elegans\ Supplementals -p &
+    grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
+    articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l /tmp/tmplist_$i.txt -t 1 -o C.\ elegans\ Supplementals -p &
     n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
 done
 wait
+rm /tmp/tmplist_*.txt
+
+# TODO test from here! - redo xml conversion
 
 # nxml files
 mkdir -p ${CAS1_DIR}/PMCOA
@@ -177,25 +184,24 @@ num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($
 n_lines_to_tail=$(wc -l ${newxml_local_list} | awk '{print $1}')
 for ((i=1; i<=${N_PROC}; i++))
 do
-    articles2cas -i "${XML_DIR}" -l <(awk 'BEGIN{FS="/"}{print $NF}' ${newxml_local_list} | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together}) -t 2 -o PMCOA -p &
+    awk 'BEGIN{FS="/"}{print $NF}' ${newxml_local_list} | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
+    articles2cas -i "${XML_DIR}" -l /tmp/tmplist_$i.txt -t 2 -o PMCOA -p > logfile_$i.log &
     n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
 done
 wait
-# TODO test from here! - redo pdf conversion for supplementals to cas1
+rm /tmp/tmplist_*.txt
+rm logfile_*.log
+
 # add images to tpcas directory and gzip
 ## xml
 cat ${newxml_local_list} | while read line
 do
-    dirname=$(echo ${line} | awk 'BEGIN{FS="/"}{print $NF}')
-    rm -rf "${CAS1_DIR}/PMCOA/${dirname}/images"
+    dirname=$(echo "${line}" | awk \'BEGIN{FS="/"}{print $NF}\'); rm -rf "${CAS1_DIR}/PMCOA/${dirname}/images"
     ln -fs "${XML_DIR}/${dirname}/images" "${CAS1_DIR}/PMCOA/${dirname}/images"
     find "${CAS1_DIR}/PMCOA/${dirname}" -name *.tpcas | xargs -I {} gzip "{}"
 done
 ## pdf
-cat ${newpdf_list} | while read line
-do
-    gzip "${CAS1_DIR}"/$(echo "${line}" | awk 'BEGIN{FS="/"}{print $NF-2"/"$NF-1"/"$NF}' | sed 's/.pdf/.tpcas/g')
-done
+cat ${newpdf_list} | xargs -n1 -P ${N_PROC} -I {} gzip "${CAS1_DIR}"/$(echo "{}" | awk 'BEGIN{FS="/"}{print $NF-2"/"$NF-1"/"$NF}' | sed 's/.pdf/.tpcas/g')
 
 # generate cas2 files from cas1
 ## copy files to temp directory
