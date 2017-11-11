@@ -30,10 +30,16 @@ void convert_dir_recursively(const string& inputDir, const string& outputDir, co
                 (dirlist_set.empty() || dirlist_set.find(dit->path().parent_path().filename().string()) !=
                                                 dirlist_set.end()))) {
             if (fileType == FileType::xml) {
+                cout << dit->path().string() << endl;
                 string decomp_file = Utils::decompress_gzip(dit->path().string(),
                                                             dit->path().parent_path().string());
                 CASManager::convert_raw_file_to_cas1(decomp_file, fileType, outputDir, use_parent_dir_as_outname);
-                boost::filesystem::remove(decomp_file);
+                if (boost::filesystem::exists(decomp_file)) {
+                    try {
+                        boost::filesystem::remove(decomp_file);
+                    } catch (boost::filesystem::filesystem_error e) {
+                    }
+                }
             } else {
                 CASManager::convert_raw_file_to_cas1(dit->path().string(), fileType, outputDir,
                                                      use_parent_dir_as_outname);
