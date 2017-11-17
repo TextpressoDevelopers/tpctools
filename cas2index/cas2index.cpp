@@ -69,19 +69,21 @@ int main(int argc, const char* argv[]) {
     if (!fileList.empty()) {
         std::ifstream infile(fileList);
         string filename;
+        string base_file_id = inputdir.parent_path().filename().string() + "/" +  inputdir.filename().string();
         while (std::getline(infile, filename))
         {
-            // TODO check if files are removed
-            indexManager.remove_file_from_index(inputDir + "/" + filename);
+            // TODO check if files are removed (also from bdb)
+            indexManager.remove_file_from_index(base_file_id + "/" + filename);
             indexManager.add_file_to_index(inputDir + "/" + filename, numPapersPerIndex);
         }
     } else if (!removeList.empty()) {
         std::ifstream infile(removeList);
         string filename;
+        string base_file_id = inputdir.parent_path().filename().string() + "/" +  inputdir.filename().string();
         while (std::getline(infile, filename))
         {
-            // TODO check if files are removed
-            indexManager.remove_file_from_index(inputDir + "/" + filename);
+            // TODO check if files are removed (also from bdb)
+            indexManager.remove_file_from_index(base_file_id + "/" + filename);
         }
     }
     else {

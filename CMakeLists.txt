@@ -27,7 +27,8 @@ include_directories(${Lucene++_INCLUDE_DIRS})
 find_package(Textpresso REQUIRED)
 include_directories(${Textpresso_INCLUDE_DIR})
 
-#include_directories("/home/valerio/workspace/caltech/textpresso/libtpc")
+# uncomment this line to debug library
+include_directories("/home/valerio/workspace/caltech/textpresso/libtpc")
 
 #### Main projects ####
 
