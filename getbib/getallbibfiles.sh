@@ -48,10 +48,11 @@ fi
 
 for corpus in ${ROOT_DIR}/*
 do
-    if [[ "${corpus}" == "C. elegans" || "${corpus}" == "C.elegans Supplementals" ]]
+    corpus_name=$(echo ${corpus} | awk -F"/" '{print $NF}')
+    if [[ "${corpus_name}" == "C. elegans" || "${corpus_name}" == "C. elegans Supplementals" ]]
     then
-        getbib ${ROOT_DIR}/${corpus}
+        getbib "${ROOT_DIR}/${corpus_name}"
     else
-        getbib4nxml ${ROOT_DIR}/${corpus}
+        getbib4nxml "${ROOT_DIR}/${corpus_name}"
     fi
 done
