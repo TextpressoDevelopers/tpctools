@@ -105,6 +105,9 @@ case $key in
 esac
 done
 
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
+export PATH=$PATH:/usr/local/bin
+
 # temp files
 logfile=$(mktemp)
 newpdf_list=$(mktemp)
@@ -254,9 +257,6 @@ mkdir -p "${TMP_DIR}/tpcas-2/pdf_celegans"
 mkdir -p "${TMP_DIR}/tpcas-2/pdf_celegans_sup"
 find ${TMP_DIR}/tpcas-1 -name *.tpcas.gz | xargs -n 1 -P ${N_PROC} gunzip
 
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
-export PATH=$PATH:/usr/local/bin
-
 for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
 do
     runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/xml/${subdir} ${TMP_DIR}/tpcas-2/xml &
@@ -274,6 +274,7 @@ mkdir -p "${CAS2_DIR}/PMCOA"
 mkdir -p "${CAS2_DIR}/C. elegans"
 mkdir -p "${CAS2_DIR}/C. elegans Supplementals"
 # 3.4.1 xml
+
 cat ${newxml_local_list} | while read line
 do
     dirname=$(echo ${line} | awk 'BEGIN{FS="/"}{print $NF}')
@@ -282,18 +283,29 @@ do
     ln -s "${CAS1_DIR}/PMCOA/${dirname}/images" "${CAS2_DIR}/PMCOA/${dirname}/images"
     cp ${TMP_DIR}/tpcas-2/xml/${dirname}.tpcas.gz "${CAS2_DIR}/PMCOA/${dirname}/${tpcas_file_name}"
 done
+
 # 3.4.2 pdf
 grep -v "Supplementals" ${newpdf_list} | while read line
 do
-    mkdir "${CAS2_DIR}/C. elegans/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')"
-    ln -s "${CAS1_DIR}/C. elegans/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/images" "${CAS2_DIR}/C. elegans/${line}/images"
-    find "${CAS1_DIR}/C. elegans/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/" -name *.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}' | xargs -I {} cp ${TMP_DIR}/tpcas-1/pdf_celegans/"{}" "${CAS2_DIR}/C. elegans/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/"
+    dirname=$(echo ${line} | awk -F"/" '{print $(NF-1)}')
+    tpcas_file_name=$(ls "${CAS1_DIR}/C. elegans/${dirname}/"*.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}')
+    if [ "${tpcas_file_name}" != "" ]
+    then
+        mkdir "${CAS2_DIR}/C. elegans/"${dirname}
+        ln -s "${CAS1_DIR}/C. elegans/${dirname}/images" "${CAS2_DIR}/C. elegans/${dirname}/images"
+        cp ${TMP_DIR}/tpcas-2/pdf_celegans/${dirname}.tpcas.gz "${CAS2_DIR}/C. elegans/${dirname}/${tpcas_file_name}"
+    fi
 done
 grep "Supplementals" ${newpdf_list} | while read line
 do
-    mkdir "${CAS2_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')"
-    ln -s "${CAS1_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/images" "${CAS2_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/images"
-    find "${CAS1_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/" -name *.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}' | xargs -I {} cp ${TMP_DIR}/tpcas-1/pdf_celegans/"{}" "${CAS2_DIR}/C. elegans Supplementals/$(echo ${line} | awk -F\"/\" '{print $(NF-1)}')/"
+    dirname=$(echo ${line} | awk -F"/" '{print $(NF-1)}')
+    tpcas_file_name=$(ls "${CAS1_DIR}/C. elegans Supplementals/${dirname}/"*.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}')
+    if [ "${tpcas_file_name}" != "" ]
+    then
+        mkdir "${CAS2_DIR}/C. elegans Supplementals/"${dirname}
+        ln -s "${CAS1_DIR}/C. elegans Supplementals/${dirname}/images" "${CAS2_DIR}/C. elegans Supplementals/${dirname}/images"
+        cp ${TMP_DIR}/tpcas-2/pdf_celegans_sup/${dirname}.tpcas.gz "${CAS2_DIR}/C. elegans Supplementals/${dirname}/${tpcas_file_name}"
+    fi
 done
 
 #################################################################################
@@ -335,6 +347,7 @@ done
 #####                     6. UPDATE INDEX                                   #####
 #################################################################################
 
+export INDEX_PATH=${INDEX_DIR}
 if [[ ! -d ${INDEX_DIR} || $(ls ${INDEX_DIR} | grep -v "subindex_0" | wc -l) == "0" ]]
 then
     mkdir -p ${INDEX_DIR}
