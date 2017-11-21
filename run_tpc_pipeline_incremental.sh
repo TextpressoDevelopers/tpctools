@@ -301,10 +301,27 @@ done
 #####                     4. GENERATE BIB FILES                             #####
 #################################################################################
 
+export TPCAS_PATH=${CAS2_DIR}
 getallbibfiles.sh -p ${N_PROC} ${CAS2_DIR}
 
 #################################################################################
-#####                     5. UPDATE INDEX                                   #####
+#####                     5. INVERT IMAGES                                  #####
+#################################################################################
+
+# TODO test from here!
+
+for paperdir in "${CAS1_DIR}/C. elegans/"*
+do
+    cmykinverter "${paperdir}/images"
+done
+for paperdir in "${CAS1_DIR}/C. elegans Supplementals/"*
+do
+    cmykinverter "${paperdir}/images"
+done
+
+
+#################################################################################
+#####                     6. UPDATE INDEX                                   #####
 #################################################################################
 
 if [[ ! -d ${INDEX_DIR} || $(ls ${INDEX_DIR} | grep -v "subindex_0" | wc -l) == "0" ]]
@@ -321,6 +338,7 @@ else
     ## xml
     awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/PMCOA/"$NF}' ${newxml_local_list} | xargs -I {} find "{}" -name *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
     cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a ${templist}
+    rm ${templist}
 fi
 
 # remove deleted or invalidated papers from cas dirs and from index
@@ -328,7 +346,7 @@ cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -r <(grep -v "Supplemental" ${removedpd
 cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -r <(grep "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans Supplementals/"$(NF-1)}' | xargs -I {} find "{}"* -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}')
 awk -F"/" '{print $(NF-1)"/"$NF}' ${removedpdf_list} | xargs -I {} sh -c 'rm -rf ${CAS1_DIR}/"{}"*; rm -rf ${CAS2_DIR}/"{}"*'
 
-# cleanup tmp files
+# delete tmp files
 rm -rf ${TMP_DIR}
 rm ${logfile}
 rm ${newpdf_list}
