@@ -67,6 +67,9 @@ add_executable(saveidstodb cas2index/saveidstodb.cpp)
 target_link_libraries(saveidstodb lucene++ boost_filesystem boost_system boost_program_options ${Textpresso_LIBRARY}
         db_cxx db_stl)
 
+add_executable(cmykinverter CMYKInverter/CMYKModifier.h CMYKInverter/CMYKModifier.cpp CMYKInverter/main.cpp)
+target_link_libraries(cmykinverter ${ImageMagick_LIBRARIES} boost_system boost_filesystem)
+
 #### INSTALL ####
 
 install(TARGETS getbib getbib4nxml
@@ -76,6 +79,7 @@ install(TARGETS getbib getbib4nxml
 install(TARGETS cas2index RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS saveidstodb RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS updatecorpuscounter RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(TARGETS cmykinverter RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(PROGRAMS cas2index/create_index_multi_literatures.sh cas2index/create_single_index.sh
         ppm2jpg/ppm2jpgCas.sh run_tpc_pipeline_incremental.sh
         getpdfs/getpdfs.py getbibinfoforpdffromserver/download_pdfinfo.pl
