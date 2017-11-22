@@ -18,6 +18,9 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 find_package(APR REQUIRED)
 include_directories(${APR_INCLUDE_DIR})
 
+find_package(ImageMagick COMPONENTS Magick++)
+include_directories(${ImageMagick_INCLUDE_DIRS})
+
 find_package(CImg REQUIRED)
 include_directories(${CImg_INCLUDE_DIRS})
 
@@ -61,7 +64,8 @@ target_link_libraries(getbib lucene++ xerces-c icuuc boost_system uima boost_fil
 
 add_executable(getbib4nxml getbib/getbib4nxml.cpp getbib/getbib4nxmlUtils.h getbib/getbib4nxmlUtils.cpp
         TextpressoCentralGlobalDefinitions.h TextpressoCentralGlobals.h)
-target_link_libraries(getbib4nxml lucene++ xerces-c icuuc boost_system uima boost_filesystem boost_iostreams)
+target_link_libraries(getbib4nxml lucene++ xerces-c icuuc boost_system uima boost_filesystem boost_iostreams
+        boost_program_options)
 
 add_executable(saveidstodb cas2index/saveidstodb.cpp)
 target_link_libraries(saveidstodb lucene++ boost_filesystem boost_system boost_program_options ${Textpresso_LIBRARY}

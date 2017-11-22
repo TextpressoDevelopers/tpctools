@@ -302,7 +302,20 @@ done
 #################################################################################
 
 export TPCAS_PATH=${CAS2_DIR}
-getallbibfiles.sh -p ${N_PROC} ${CAS2_DIR}
+
+# 4.1 pdf
+getbib "${CAS2_DIR}/C. elegans"
+getbib "${CAS2_DIR}/C. elegans Supplementals"
+
+# 4.2 xml
+tempdir=$(mktemp -d)
+for pmcoa_dir in "${CAS2_DIR}/PMCOA"*; do echo "${pmcoa_dir}"; done | awk 'BEGIN{FS="/"}{print $NF}' | split -l ${N_PROC} - ${tempdir}/file_to_process-
+for file_list in $(ls ${tempdir})
+do
+    getbib4nxml "${CAS2_DIR}/PMCOA" -f ${tempdir}/${file_list} &
+done
+wait
+rm -rf ${tempdir}
 
 #################################################################################
 #####                     5. INVERT IMAGES                                  #####

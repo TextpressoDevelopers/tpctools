@@ -47,7 +47,7 @@ void addCasFile(const char* pszInput, string indexdescriptor) {
 
     std::string gzfile(pszInput);
     std::cout << gzfile << std::endl;
-    if(gzfile.find("tpcas") == std::string::npos)
+    if(gzfile.find("tpcas.gz") == std::string::npos)
         return;
 
 
