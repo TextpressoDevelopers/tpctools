@@ -88,6 +88,8 @@ void addCasFile(const char* pszInput, std::string indexdescriptor) {
         delete cas;
         delete pEngine;
         std::remove(tpcasfile.c_str()); //delete uncompressed temp casfile
+        boost::filesystem::path p(tpcasfile);
+        boost::filesystem::remove_all(p.parent_path());
     } catch (uima::Exception e) {
         std::cerr << "Exception: " << e << std::endl;
     }

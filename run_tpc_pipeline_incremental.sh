@@ -263,7 +263,6 @@ do
 done
 wait
 
-# TODO test from here!
 runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/pdf_celegans ${TMP_DIR}/tpcas-2/pdf_celegans
 runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/pdf_celegans_sup ${TMP_DIR}/tpcas-2/pdf_celegans_sup
 
@@ -307,9 +306,12 @@ export TPCAS_PATH=${CAS2_DIR}
 getbib "${CAS2_DIR}/C. elegans"
 getbib "${CAS2_DIR}/C. elegans Supplementals"
 
+# TODO test from here!
+
 # 4.2 xml
 tempdir=$(mktemp -d)
-for pmcoa_dir in "${CAS2_DIR}/PMCOA"*; do echo "${pmcoa_dir}"; done | awk 'BEGIN{FS="/"}{print $NF}' | split -l ${N_PROC} - ${tempdir}/file_to_process-
+num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(ls "${CAS2_DIR}/PMCOA/" | wc -l) / ${N_PROC}))")
+ls "${CAS2_DIR}/PMCOA/" | split -l ${num_papers_to_process_together} - ${tempdir}/file_to_process-
 for file_list in $(ls ${tempdir})
 do
     getbib4nxml "${CAS2_DIR}/PMCOA" -f ${tempdir}/${file_list} &
@@ -320,8 +322,6 @@ rm -rf ${tempdir}
 #################################################################################
 #####                     5. INVERT IMAGES                                  #####
 #################################################################################
-
-# TODO test from here!
 
 for paperdir in "${CAS1_DIR}/C. elegans/"*
 do

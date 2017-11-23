@@ -21,7 +21,7 @@ string uncompressGzip(string gzFile) {
 
     string shm("/run/shm/");
     string tempFile = shm + tpFile;
-    // string tempFile = getTempDir() + "/" +tpFile;
+    //string tempFile = getTempDir() + "/" + tpFile;
     //  std::cout << "177 " << tempFile << endl;
     std::ofstream out(tempFile.c_str());
     boost::iostreams::copy(in, out);

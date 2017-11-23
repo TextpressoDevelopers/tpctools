@@ -5,6 +5,7 @@
  */
 
 #include "getbib4nxmlUtils.h"
+#include <boost/filesystem/operations.hpp>
 
 std::string uncompressGzip(std::string gzFile) {
     std::ifstream filein(gzFile.c_str(), std::ios_base::in | std::ios_base::binary);
@@ -14,8 +15,11 @@ std::string uncompressGzip(std::string gzFile) {
     int lastdot = gzFile.find_last_of(".");
     int lastslash = gzFile.find_last_of("/");
     std::string tpFile = gzFile.substr(lastslash + 1, lastdot - lastslash - 1);
-    std::string shm("/run/shm/");
-    std::string tempFile = shm + tpFile;
+    //std::string shm("/run/shm/");
+    //std::string tempFile = shm + tpFile;
+    std::string tempDir = getTempDir();
+    std::string tempFile = tempDir + "/" + tpFile;
+    boost::filesystem::create_directories(tempDir);
     std::ofstream out(tempFile.c_str());
     boost::iostreams::copy(in, out);
     out.close();
