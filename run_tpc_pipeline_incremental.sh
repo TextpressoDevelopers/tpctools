@@ -255,7 +255,7 @@ mkdir -p "${TMP_DIR}/tpcas-2/pdf_celegans_sup"
 find ${TMP_DIR}/tpcas-1 -name *.tpcas.gz | xargs -n 1 -P ${N_PROC} gunzip
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
-export PATH=$PATH:/usr/local/lib
+export PATH=$PATH:/usr/local/bin
 
 for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
 do
@@ -306,8 +306,6 @@ export TPCAS_PATH=${CAS2_DIR}
 getbib "${CAS2_DIR}/C. elegans"
 getbib "${CAS2_DIR}/C. elegans Supplementals"
 
-# TODO test from here!
-
 # 4.2 xml
 tempdir=$(mktemp -d)
 num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(ls "${CAS2_DIR}/PMCOA/" | wc -l) / ${N_PROC}))")
@@ -341,6 +339,16 @@ if [[ ! -d ${INDEX_DIR} || $(ls ${INDEX_DIR} | grep -v "subindex_0" | wc -l) == 
 then
     mkdir -p ${INDEX_DIR}
     create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR}
+    cd ${INDEX_DIR}
+    for subindex_to_merge in subindex_{1..9}
+    do
+        indexmerger subindex_0 ${subindex_to_merge} no
+    done
+    for subindex_to_merge in subindex_{11..17}
+    do
+        indexmerger subindex_10 ${subindex_to_merge} no
+    done
+    saveidstodb -i ${INDEX_DIR}
 else
     ## pdf
     templist=$(mktemp)

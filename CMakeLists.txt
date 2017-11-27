@@ -54,7 +54,6 @@ target_link_libraries(updatecorpuscounter ${Textpresso_LIBRARY} boost_filesystem
 add_executable(indexmerger cas2index/index_merger.cpp lucene/CaseSensitiveAnalyzer.cpp)
 target_link_libraries(indexmerger uima boost_filesystem boost_system lucene++)
 
-
 add_executable(articles2cas articles2cas/articles2cas.cpp articles2cas/Utils.h articles2cas/Utils.cpp)
 target_link_libraries(articles2cas ${Textpresso_LIBRARY} boost_filesystem boost_system boost_program_options boost_iostreams)
 
@@ -84,6 +83,7 @@ install(TARGETS cas2index RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS saveidstodb RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS updatecorpuscounter RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS cmykinverter RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(TARGETS indexmerger RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(PROGRAMS cas2index/create_index_multi_literatures.sh cas2index/create_single_index.sh
         ppm2jpg/ppm2jpgCas.sh run_tpc_pipeline_incremental.sh
         getpdfs/getpdfs.py getbibinfoforpdffromserver/download_pdfinfo.pl
