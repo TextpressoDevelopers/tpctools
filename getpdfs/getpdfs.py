@@ -160,7 +160,7 @@ def main():
                             hashlib.md5(open(file_path, "rb").read()).digest():
                 logging.info("File already present in collection, skipping " + pdflink)
                 continue
-            os.makedirs(os.path.dirname(file_path))
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
             urllib.request.urlretrieve(pdflink, file_path)
             logging.info("Downloading paper: " + pdflink + " to " + file_path)
         except urllib.error.HTTPError:

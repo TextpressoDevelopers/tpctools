@@ -133,15 +133,13 @@ umount ${FTP_MNTPNT}
 if [[ -e ${XML_DIR}/current_filelist.txt ]]
 then
     # download diff files
-    diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $3}' | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' | xargs -n 1 -P ${N_PROC} -I {} sh -c 'wget -qO- "ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{}" | tar xfz - --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C '"${XML_DIR}"
-    # save new current list
-    diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $3}' >> ${XML_DIR}/current_filelist.txt
+    diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $4}' | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' | xargs -n 1 -P ${N_PROC} -I {} sh -c 'wget -qO- "ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{}" | tar xfz - --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C '"${XML_DIR}"
 else
     # download all files
     awk '{print $3}' ${newxml_list} | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' | xargs -n 1 -P ${N_PROC} -I {} sh -c 'wget -qO- "ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{}" | tar xfz - --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C '"${XML_DIR}"
-    # save file list as current
-    cp ${newxml_list} ${XML_DIR}/current_filelist.txt
 fi
+# save the current list
+cp ${newxml_list} ${XML_DIR}/current_filelist.txt
 # 1.1.5 save new xml local file list
 cut -d " " -f 3 ${newxml_list} | sed "s/\/mnt\/pmc\_ftp\/.\{2\}\/.\{2\}\///g;s/\.tar\.gz//g" | xargs -I {} echo ${XML_DIR}/{} > ${newxml_local_list}
 # 1.1.6 compress nxml and put images in a separate directory
@@ -366,18 +364,24 @@ else
     ## pdf
     templist=$(mktemp)
     grep -v "Supplemental" ${newpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
+    # remove possible old versions and add new files for pdf documents
     cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a ${templist}
     grep "Supplemental" ${newpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans Supplementals/"$(NF-1)}' | xargs -I {} find "{}" -name *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
+    # remove possible old versions and add new files for supplemental material
     cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a ${templist}
     ## xml
     awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/PMCOA/"$NF}' ${newxml_local_list} | xargs -I {} find "{}" -name *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
+    # remove possible old versions and add new files for xml documents
     cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -a ${templist}
     rm ${templist}
 fi
 
 # remove deleted or invalidated papers from cas dirs and from index
-cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -r <(grep -v "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}')
-cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -r <(grep "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans Supplementals/"$(NF-1)}' | xargs -I {} find "{}"* -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}')
+templist=$(mktemp)
+grep -v "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
+cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -r ${templist}
+grep "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans Supplementals/"$(NF-1)}' | xargs -I {} find "{}"* -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
+cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -r ${templist}
 awk -F"/" '{print $(NF-1)"/"$NF}' ${removedpdf_list} | xargs -I {} sh -c 'rm -rf ${CAS1_DIR}/"{}"*; rm -rf ${CAS2_DIR}/"{}"*'
 
 # delete tmp files
