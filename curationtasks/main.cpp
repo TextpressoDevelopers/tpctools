@@ -103,6 +103,7 @@ int main(int argc, char * argv[]) {
             txt_output.push_back("journal: " + result.journal);
             txt_output.push_back("year: " + result.year);
             txt_output.push_back("abstract: " + result.abstract);
+            txt_output.push_back("type: " + result.type);
             if (q.type == QueryType::document) {
                 txt_output.push_back("hit: " + result.fulltext);
             } else {
@@ -187,6 +188,11 @@ int main(int argc, char * argv[]) {
             cout << line << endl;
         }
         cout << "</body></html>" << endl;
+    }
+    else {
+        for (auto& line : txt_output) {
+            cout << line << endl;
+        }
     }
     return 0;
 }
