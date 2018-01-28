@@ -75,6 +75,7 @@ int main(int argc, const char* argv[]) {
             indexManager.remove_file_from_index(filename);
             indexManager.add_file_to_index(inputDir + "/" + filename, numPapersPerIndex);
         }
+        indexManager.calculate_and_save_corpus_counter();
     } else if (!removeList.empty()) {
         std::ifstream infile(removeList);
         string filename;
@@ -83,6 +84,7 @@ int main(int argc, const char* argv[]) {
             // TODO check if files are removed (also from bdb)
             indexManager.remove_file_from_index(filename);
         }
+        indexManager.calculate_and_save_corpus_counter();
     }
     else {
         std::fstream f;
