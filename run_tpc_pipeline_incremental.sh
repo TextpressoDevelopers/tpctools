@@ -300,10 +300,17 @@ then
     cat ${newxml_local_list} | while read line
     do
         dirname=$(echo ${line} | awk 'BEGIN{FS="/"}{print $NF}')
-        tpcas_file_name=$(ls ${CAS1_DIR}/PMCOA/${dirname}/*.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}')
-        mkdir -p "${CAS2_DIR}/PMCOA/${dirname}"
-        ln -s "${CAS1_DIR}/PMCOA/${dirname}/images" "${CAS2_DIR}/PMCOA/${dirname}/images"
-        cp ${TMP_DIR}/tpcas-2/xml/${dirname}.tpcas.gz "${CAS2_DIR}/PMCOA/${dirname}/${tpcas_file_name}"
+        if [[ -d "${CAS1_DIR}/PMCOA/${dirname}" ]]
+        then
+            tpcas_file_name=$(ls ${CAS1_DIR}/PMCOA/${dirname}/*.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}')
+            mkdir -p "${CAS2_DIR}/PMCOA/${dirname}"
+            if [[ -e "${CAS2_DIR}/PMCOA/${dirname}/images" ]]
+            then
+                rm "${CAS2_DIR}/PMCOA/${dirname}/images"
+            fi
+            ln -s "${CAS1_DIR}/PMCOA/${dirname}/images" "${CAS2_DIR}/PMCOA/${dirname}/images"
+            cp ${TMP_DIR}/tpcas-2/xml/${dirname}.tpcas.gz "${CAS2_DIR}/PMCOA/${dirname}/${tpcas_file_name}"
+        fi
     done
 
     # 3.4.2 pdf
@@ -313,7 +320,7 @@ then
         tpcas_file_name=$(ls "${CAS1_DIR}/C. elegans/${dirname}/"*.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}')
         if [ "${tpcas_file_name}" != "" ]
         then
-            mkdir "${CAS2_DIR}/C. elegans/"${dirname}
+            mkdir -p "${CAS2_DIR}/C. elegans/"${dirname}
             ln -s "${CAS1_DIR}/C. elegans/${dirname}/images" "${CAS2_DIR}/C. elegans/${dirname}/images"
             cp ${TMP_DIR}/tpcas-2/pdf_celegans/${dirname}.tpcas.gz "${CAS2_DIR}/C. elegans/${dirname}/${tpcas_file_name}"
         fi
@@ -324,7 +331,7 @@ then
         tpcas_file_name=$(ls "${CAS1_DIR}/C. elegans Supplementals/${dirname}/"*.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}')
         if [ "${tpcas_file_name}" != "" ]
         then
-            mkdir "${CAS2_DIR}/C. elegans Supplementals/"${dirname}
+            mkdir -p "${CAS2_DIR}/C. elegans Supplementals/"${dirname}
             ln -s "${CAS1_DIR}/C. elegans Supplementals/${dirname}/images" "${CAS2_DIR}/C. elegans Supplementals/${dirname}/images"
             cp ${TMP_DIR}/tpcas-2/pdf_celegans_sup/${dirname}.tpcas.gz "${CAS2_DIR}/C. elegans Supplementals/${dirname}/${tpcas_file_name}"
         fi
