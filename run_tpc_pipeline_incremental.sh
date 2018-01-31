@@ -13,6 +13,7 @@ function usage {
     echo "  -C --cas2-dir     directory where generated cas2 files will be stored"
     echo "  -t --tmp-dir      temp directory"
     echo "  -f --ftp-dir      ftp mount point for pmcoa papers"
+    echo "  -i --index-dir    directory for the lucene index"
     echo "  -P --num-proc     maximum number of parallel processes"
     echo "  -e --exclude-step do not execute the steps specified by a comma separated list of step names. Step names "
     echo "                    are: download,cas1,cas2,bib,index,invert_img,remove_invalidated."
@@ -85,6 +86,14 @@ case $key in
     if [[ -d $key ]]
     then
         FTP_MNTPNT="$key"
+    fi
+    shift
+    ;;
+    -i|--index-dir)
+    shift
+    if [[ -d $key ]]
+    then
+        INDEX_DIR="$key"
     fi
     shift
     ;;
@@ -366,6 +375,8 @@ fi
 #####                     5. INVERT IMAGES                                  #####
 #################################################################################
 
+# TODO apply only to new files - use temp directory and copy results
+
 if [[ ! " ${EXCLUDE_STEPS}[@] " =~ " invert_img " ]]
 then
     grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read paperdir
@@ -416,6 +427,10 @@ then
         rm ${templist}
     fi
 fi
+
+#################################################################################
+#####                  7. REMOVE INVALIDATED PAPERS                         #####
+#################################################################################
 
 if [[ ! " ${EXCLUDE_STEPS}[@] " =~ " remove_invalidated " ]]
 then
