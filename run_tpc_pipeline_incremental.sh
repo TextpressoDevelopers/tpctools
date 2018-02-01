@@ -6,7 +6,7 @@ function usage {
     echo "lucene. The script maintains a list of the downloaded files and performs incremental updates. It can be "
     echo "executed periodically to maintain the repository updated"
     echo
-    echo "usage: $(basename $0) [-p]"
+    echo "usage: $(basename $0) [-pxcCtfiPeh]"
     echo "  -p --pdf-dir      directory where raw pdf files will be stored"
     echo "  -x --xml-dir      directory where raw xml files will be stored"
     echo "  -c --cas1-dir     directory where generated cas1 files will be stored"
@@ -21,10 +21,21 @@ function usage {
     exit 1
 }
 
-if [[ "${#}" < 2 ]]
-then
-    usage
-fi
+function array_contains {
+    length=$(($#-1))
+    array=(${@:1:$length})
+    element_idx=$((length + 1))
+    check=${@:$element_idx:$element_idx}
+    found="0"
+    for value in "${array[@]}"
+    do
+        if [[ ${value} == ${check} ]]
+        then
+            found="1"
+        fi
+    done
+    echo ${found}
+}
 
 PDF_DIR="/data/textpresso/raw_files/pdf"
 XML_DIR="/data/textpresso/raw_files/xml"
@@ -36,64 +47,64 @@ INDEX_DIR="/data/textpresso/luceneindex"
 N_PROC=1
 EXCLUDE_STEPS=""
 
-while [[ $# -gt 0 ]]
+while [[ $# -gt 1 ]]
 do
 key=$1
 
 case $key in
     -p|--pdf-dir)
     shift
-    if [[ -d $key ]]
+    if [[ -d $1 ]]
     then
-        PDF_DIR="$key"
+        PDF_DIR="$1"
     fi
     shift
     ;;
     -x|--xml-dir)
     shift
-    if [[ -d $key ]]
+    if [[ -d $1 ]]
     then
-        XML_DIR="$key"
+        XML_DIR="$1"
     fi
     shift
     ;;
     -c|--cas1-dir)
     shift
-    if [[ -d $key ]]
+    if [[ -d $1 ]]
     then
-        CAS1_DIR="$key"
+        CAS1_DIR="$1"
     fi
     shift
     ;;
     -C|--cas2-dir)
     shift
-    if [[ -d $key ]]
+    if [[ -d $1 ]]
     then
-        CAS2_DIR="$key"
+        CAS2_DIR="$1"
     fi
     shift
     ;;
     -t|--tmp-dir)
     shift
-    if [[ -d $key ]]
+    if [[ -d $1 ]]
     then
-        TMP_DIR="$key"
+        TMP_DIR="$1"
     fi
     shift
     ;;
     -f|--ftp-dir)
     shift
-    if [[ -d $key ]]
+    if [[ -d $1 ]]
     then
-        FTP_MNTPNT="$key"
+        FTP_MNTPNT="$1"
     fi
     shift
     ;;
     -i|--index-dir)
     shift
-    if [[ -d $key ]]
+    if [[ -d $1 ]]
     then
-        INDEX_DIR="$key"
+        INDEX_DIR="$1"
     fi
     shift
     ;;
@@ -109,15 +120,6 @@ case $key in
     ;;
     -h|--help)
     usage
-    ;;
-    *)
-    if [[ -d $key ]]
-    then
-        ROOT_DIR="$key"
-        shift
-    else
-        usage
-    fi
     ;;
 esac
 done
@@ -137,9 +139,8 @@ diffxml_list=$(mktemp)
 #####                      1. DOWNLOAD PAPERS                               #####
 #################################################################################
 
-if [[ ! " ${EXCLUDE_STEPS}[@] " =~ " download " ]]
+if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "download") == "0" ]]
 then
-
     # 1.1 XML FROM PMCOA
 
     # 1.1.1 create directory for unclassified xml files
@@ -154,7 +155,9 @@ then
     if [[ -e ${XML_DIR}/current_filelist.txt ]]
     then
         # delete previous versions
-        diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $4}' | awk -F"/" '{print $NF}' | xargs -I {} rm -rf "${XML_DIR}/{}"
+        diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $4}' | awk -F"/" '{print $NF}' | sed 's/.tar.gz//g' | xargs -I {} rm -rf "${XML_DIR}/{}"
+        diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $4}' | awk -F"/" '{print $NF}' | sed 's/.tar.gz//g' | xargs -I {} rm -rf "${CAS1_DIR}/{}"
+        diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $4}' | awk -F"/" '{print $NF}' | sed 's/.tar.gz//g' | xargs -I {} rm -rf "${CAS2_DIR}/{}"
         # download diff files
         diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $4}' | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' | xargs -n 1 -P ${N_PROC} -I {} sh -c 'wget -qO- "ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{}" | tar xfz - --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C '"${XML_DIR}"
         diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | sed 's/< //g' > ${diffxml_list}
@@ -163,15 +166,19 @@ then
         awk '{print $3}' ${newxml_list} | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' | xargs -n 1 -P ${N_PROC} -I {} sh -c 'wget -qO- "ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{}" | tar xfz - --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C '"${XML_DIR}"
         cp ${newxml_list} ${diffxml_list}
     fi
+    # remove empty files from diff list
+    tmp_diff_file=$(mktemp)
+    awk '{print $3}' ${diffxml_list} | awk -F"/" '{print $NF}' | sed 's/.tar.gz//g' | xargs -I {} bash -c 'if [[ -d "$0/{}" ]]; then echo "{}"; fi' "${XML_DIR}" > ${tmp_diff_file}
+    mv ${tmp_diff_file} ${diffxml_list}
+
     # save the current list
     cp ${newxml_list} ${XML_DIR}/current_filelist.txt
     # 1.1.5 save new xml local file list
-    cut -d " " -f 3 ${diffxml_list} | sed "s/\/mnt\/pmc\_ftp\/.\{2\}\/.\{2\}\///g;s/\.tar\.gz//g" | xargs -I {} echo "${XML_DIR}/{}" > ${newxml_local_list}
+    cat ${diffxml_list} | xargs -I {} echo "${XML_DIR}/{}" > ${newxml_local_list}
     # 1.1.6 compress nxml and put images in a separate directory
     cat ${newxml_local_list} | xargs -I {} -n1 -P ${N_PROC} sh -c 'gzip "{}"/*.nxml; mkdir "{}"/images; ls -d "{}"/* | grep -v .nxml | grep -v "{}"/images | xargs -I [] mv [] "{}"/images'
 
     # 1.2. download new pdf files incrementally from tazendra
-
     # 1.2.1 download pdf files
     getpdfs.py -l ${logfile} -L INFO "${PDF_DIR}"
     grep -oP "Downloading paper: .* to \K.*\.pdf" ${logfile} > ${newpdf_list}
@@ -186,9 +193,8 @@ fi
 #####                      2. GENERATE TPCAS-1                              #####
 #################################################################################
 
-if [[ ! " ${EXCLUDE_STEPS}[@] " =~ " cas1 " ]]
+if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "cas1") == "0" ]]
 then
-
     # 2.1 PDF FILES
     mkdir -p ${CAS1_DIR}/C.\ elegans
     mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
@@ -245,7 +251,7 @@ fi
 #####                     3. GENERATE CAS-2                                 #####
 #################################################################################
 
-if [[ ! " ${EXCLUDE_STEPS}[@] " =~ " cas2 " ]]
+if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "cas2") == "0" ]]
 then
 
     # 3.1 COPY FILES TO TMP DIR
@@ -351,7 +357,7 @@ fi
 #####                     4. GENERATE BIB FILES                             #####
 #################################################################################
 
-if [[ ! " ${EXCLUDE_STEPS}[@] " =~ " bib " ]]
+if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "bib") == "0" ]]
 then
     export TPCAS_PATH=${CAS2_DIR}
 
@@ -375,7 +381,7 @@ fi
 #####                     5. INVERT IMAGES                                  #####
 #################################################################################
 
-if [[ ! " ${EXCLUDE_STEPS}[@] " =~ " invert_img " ]]
+if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "invert_img") == "0" ]]
 then
     grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read paperdir
     do
@@ -392,7 +398,7 @@ fi
 #####                     6. UPDATE INDEX                                   #####
 #################################################################################
 
-if [[ ! " ${EXCLUDE_STEPS}[@] " =~ " index " ]]
+if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "index") == "0" ]]
 then
     export INDEX_PATH=${INDEX_DIR}
     if [[ ! -d ${INDEX_DIR} || $(ls ${INDEX_DIR} | grep -v "subindex_0" | wc -l) == "0" ]]
@@ -430,7 +436,7 @@ fi
 #####                  7. REMOVE INVALIDATED PAPERS                         #####
 #################################################################################
 
-if [[ ! " ${EXCLUDE_STEPS}[@] " =~ " remove_invalidated " ]]
+if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "remove_invalidated") == "0" ]]
 then
     # remove deleted or invalidated papers from cas dirs and from index
     templist=$(mktemp)
