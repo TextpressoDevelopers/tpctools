@@ -361,8 +361,8 @@ then
 
     # 4.2 xml
     tempdir=$(mktemp -d)
-    num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(ls "${CAS2_DIR}/PMCOA/" | wc -l) / ${N_PROC}))")
-    ls "${CAS2_DIR}/PMCOA/" | split -l ${num_papers_to_process_together} - ${tempdir}/file_to_process-
+    num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(ls "${TMP_DIR}/tpcas-2/xml" | wc -l) / ${N_PROC}))")
+    ls "${TMP_DIR}/tpcas-2/xml" | sed 's/.tpcas.gz//g' | split -l ${num_papers_to_process_together} - ${tempdir}/file_to_process-
     for file_list in $(ls ${tempdir})
     do
         getbib4nxml "${CAS2_DIR}/PMCOA" -f ${tempdir}/${file_list} &
@@ -374,8 +374,6 @@ fi
 #################################################################################
 #####                     5. INVERT IMAGES                                  #####
 #################################################################################
-
-# TODO apply only to new files - use temp directory and copy results
 
 if [[ ! " ${EXCLUDE_STEPS}[@] " =~ " invert_img " ]]
 then
@@ -399,7 +397,7 @@ then
     export INDEX_PATH=${INDEX_DIR}
     if [[ ! -d ${INDEX_DIR} || $(ls ${INDEX_DIR} | grep -v "subindex_0" | wc -l) == "0" ]]
     then
-        mkdir -p ${INDEX_DIR}
+        mkdir -p "${INDEX_DIR}/db"
         create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR}
         cd ${INDEX_DIR}
         for subindex_to_merge in subindex_{1..9}
