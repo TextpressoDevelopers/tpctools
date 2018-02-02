@@ -156,8 +156,6 @@ then
     then
         # delete previous versions
         diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $4}' | awk -F"/" '{print $NF}' | sed 's/.tar.gz//g' | xargs -I {} rm -rf "${XML_DIR}/{}"
-        diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $4}' | awk -F"/" '{print $NF}' | sed 's/.tar.gz//g' | xargs -I {} rm -rf "${CAS1_DIR}/{}"
-        diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $4}' | awk -F"/" '{print $NF}' | sed 's/.tar.gz//g' | xargs -I {} rm -rf "${CAS2_DIR}/{}"
         # download diff files
         diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | awk '{print $4}' | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' | xargs -n 1 -P ${N_PROC} -I {} sh -c 'wget -qO- "ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{}" | tar xfz - --exclude="*.pdf" --exclude="*.PDF" --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" --exclude="*.csv" --exclude="*.xls*" --exclude="*.doc*" --exclude="*.ppt*" --exclude="*.rar" --exclude="*.txt" --exclude="*.TXT" --exclude="*.wmv" --exclude="*.DOC*" -C '"${XML_DIR}"
         diff ${newxml_list} ${XML_DIR}/current_filelist.txt | grep "^<" | sed 's/< //g' > ${diffxml_list}
@@ -187,6 +185,11 @@ then
     mkdir -p /usr/local/textpresso/celegans_bib
     download_pdfinfo.pl /usr/local/textpresso/celegans_bib/
     extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
+else
+    # use current files as 'new' and process them
+    find ${XML_DIR} -mindepth 1 -maxdepth 1 -type d > ${newxml_local_list}
+    find ${PDF_DIR} -mindepth 3 -maxdepth 3 -name "*.pdf" > ${newpdf_list}
+    # remove previous tpcas versions
 fi
 
 #################################################################################
@@ -225,6 +228,10 @@ then
     rm /tmp/tmplist_*.txt
 
     # 2.2 XML FILES
+
+    # remove old versions
+    awk -F"/" '{print $NF}' ${newxml_local_list} | xargs -I {} rm -rf "${CAS1_DIR}/PMCOA/{}"
+
     mkdir -p ${CAS1_DIR}/PMCOA
     cd ${CAS1_DIR}
     num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(wc -l ${newxml_local_list} | awk '{print $1}') / ${N_PROC}))")
@@ -289,10 +296,16 @@ then
     done
 
     # 3.2 APPLY UIMA ANALYSIS
+    # create dir structure if it does not exist
     mkdir -p "${TMP_DIR}/tpcas-2/xml"
     mkdir -p "${TMP_DIR}/tpcas-2/pdf_celegans"
     mkdir -p "${TMP_DIR}/tpcas-2/pdf_celegans_sup"
+
+    # decompress all tpcas files in tmp dir before processing them
     find ${TMP_DIR}/tpcas-1 -name *.tpcas.gz | xargs -n 1 -P ${N_PROC} gunzip
+
+    # remove old versions
+    awk -F"/" '{print $NF}' ${newxml_local_list} | xargs -I {} rm -rf "${CAS2_DIR}/PMCOA/{}"
 
     for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
     do
@@ -310,14 +323,14 @@ then
     mkdir -p "${CAS2_DIR}/PMCOA"
     mkdir -p "${CAS2_DIR}/C. elegans"
     mkdir -p "${CAS2_DIR}/C. elegans Supplementals"
-    # 3.4.1 xml
 
+    # 3.4.1 xml
     cat ${newxml_local_list} | while read line
     do
         dirname=$(echo ${line} | awk 'BEGIN{FS="/"}{print $NF}')
         if [[ -d "${CAS1_DIR}/PMCOA/${dirname}" ]]
         then
-            tpcas_file_name=$(ls ${CAS1_DIR}/PMCOA/${dirname}/*.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}')
+            tpcas_file_name=$(ls ${CAS1_DIR}/PMCOA/${dirname}/*.tpcas.gz | head -n1 | awk 'BEGIN{FS="/"}{print $NF}')
             mkdir -p "${CAS2_DIR}/PMCOA/${dirname}"
             if [[ -e "${CAS2_DIR}/PMCOA/${dirname}/images" ]]
             then
@@ -332,7 +345,7 @@ then
     grep -v "Supplementals" ${newpdf_list} | while read line
     do
         dirname=$(echo ${line} | awk -F"/" '{print $(NF-1)}')
-        tpcas_file_name=$(ls "${CAS1_DIR}/C. elegans/${dirname}/"*.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}')
+        tpcas_file_name=$(ls "${CAS1_DIR}/C. elegans/${dirname}/"*.tpcas.gz | head -n1 | awk 'BEGIN{FS="/"}{print $NF}')
         if [ "${tpcas_file_name}" != "" ]
         then
             mkdir -p "${CAS2_DIR}/C. elegans/"${dirname}
@@ -343,7 +356,7 @@ then
     grep "Supplementals" ${newpdf_list} | while read line
     do
         dirname=$(echo ${line} | awk -F"/" '{print $(NF-1)}')
-        tpcas_file_name=$(ls "${CAS1_DIR}/C. elegans Supplementals/${dirname}/"*.tpcas.gz | awk 'BEGIN{FS="/"}{print $NF}')
+        tpcas_file_name=$(ls "${CAS1_DIR}/C. elegans Supplementals/${dirname}/"*.tpcas.gz | head -n1 | awk 'BEGIN{FS="/"}{print $NF}')
         if [ "${tpcas_file_name}" != "" ]
         then
             mkdir -p "${CAS2_DIR}/C. elegans Supplementals/"${dirname}
@@ -448,7 +461,8 @@ then
 fi
 
 # delete tmp files
-rm -rf ${TMP_DIR}
+rm -rf ${TMP_DIR}/tpcas-1
+rm -rf ${TMP_DIR}/tpcas-2
 rm ${logfile}
 rm ${newpdf_list}
 rm ${newxml_list}
