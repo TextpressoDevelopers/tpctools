@@ -47,7 +47,7 @@ INDEX_DIR="/data/textpresso/luceneindex"
 N_PROC=1
 EXCLUDE_STEPS=""
 
-while [[ $# -gt 1 ]]
+while [[ $# -gt 0 ]]
 do
 key=$1
 
@@ -141,6 +141,7 @@ diffxml_list=$(mktemp)
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "download") == "0" ]]
 then
+    echo "Downloading papers ..."
     # 1.1 XML FROM PMCOA
 
     # 1.1.1 create directory for unclassified xml files
@@ -186,6 +187,7 @@ then
     download_pdfinfo.pl /usr/local/textpresso/celegans_bib/
     extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
 else
+    echo "Download phase skipped. Using files in ${PDF_DIR} and ${XML_DIR}"
     # use current files as 'new' and process them
     find ${XML_DIR} -mindepth 1 -maxdepth 1 -type d > ${newxml_local_list}
     find ${PDF_DIR} -mindepth 3 -maxdepth 3 -name "*.pdf" > ${newpdf_list}
@@ -198,6 +200,7 @@ fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "cas1") == "0" ]]
 then
+    echo "Generating CAS1 files ..."
     # 2.1 PDF FILES
     mkdir -p ${CAS1_DIR}/C.\ elegans
     mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
@@ -260,7 +263,7 @@ fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "cas2") == "0" ]]
 then
-
+    echo "Generating CAS2 files ..."
     # 3.1 COPY FILES TO TMP DIR
 
     # 3.1.1 xml - subdirs are processed in parallel
@@ -372,6 +375,7 @@ fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "bib") == "0" ]]
 then
+    echo "Generating bib files ..."
     export TPCAS_PATH=${CAS2_DIR}
 
     # 4.1 pdf
@@ -396,6 +400,7 @@ fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "invert_img") == "0" ]]
 then
+    echo "Inverting images ..."
     grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read paperdir
     do
         cmykinverter "${CAS1_DIR}/C. elegans/${paperdir}/images"
@@ -413,6 +418,7 @@ fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "index") == "0" ]]
 then
+    echo "Updating index ..."
     export INDEX_PATH=${INDEX_DIR}
     if [[ ! -d ${INDEX_DIR} || $(ls ${INDEX_DIR} | grep -v "subindex_0" | wc -l) == "0" ]]
     then
@@ -451,6 +457,7 @@ fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "remove_invalidated") == "0" ]]
 then
+    echo "Removing invalid papers deleted from server ..."
     # remove deleted or invalidated papers from cas dirs and from index
     templist=$(mktemp)
     grep -v "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
@@ -460,6 +467,7 @@ then
     awk -F"/" '{print $(NF-1)"/"$NF}' ${removedpdf_list} | xargs -I {} sh -c 'rm -rf ${CAS1_DIR}/"{}"*; rm -rf ${CAS2_DIR}/"{}"*'
 fi
 
+echo "Cleaning up temp files ..."
 # delete tmp files
 rm -rf ${TMP_DIR}/tpcas-1
 rm -rf ${TMP_DIR}/tpcas-2
