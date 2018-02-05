@@ -54,58 +54,37 @@ key=$1
 case $key in
     -p|--pdf-dir)
     shift
-    if [[ -d $1 ]]
-    then
-        PDF_DIR="$1"
-    fi
+    PDF_DIR="$1"
     shift
     ;;
     -x|--xml-dir)
     shift
-    if [[ -d $1 ]]
-    then
-        XML_DIR="$1"
-    fi
+    XML_DIR="$1"
     shift
     ;;
     -c|--cas1-dir)
     shift
-    if [[ -d $1 ]]
-    then
-        CAS1_DIR="$1"
-    fi
+    CAS1_DIR="$1"
     shift
     ;;
     -C|--cas2-dir)
     shift
-    if [[ -d $1 ]]
-    then
-        CAS2_DIR="$1"
-    fi
+    CAS2_DIR="$1"
     shift
     ;;
     -t|--tmp-dir)
     shift
-    if [[ -d $1 ]]
-    then
-        TMP_DIR="$1"
-    fi
+    TMP_DIR="$1"
     shift
     ;;
     -f|--ftp-dir)
     shift
-    if [[ -d $1 ]]
-    then
-        FTP_MNTPNT="$1"
-    fi
+    FTP_MNTPNT="$1"
     shift
     ;;
     -i|--index-dir)
     shift
-    if [[ -d $1 ]]
-    then
-        INDEX_DIR="$1"
-    fi
+    INDEX_DIR="$1"
     shift
     ;;
     -P|--num-proc)
