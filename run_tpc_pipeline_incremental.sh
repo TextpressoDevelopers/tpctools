@@ -46,6 +46,7 @@ FTP_MNTPNT="/mnt/pmc_ftp"
 INDEX_DIR="/data/textpresso/luceneindex"
 N_PROC=1
 EXCLUDE_STEPS=""
+PAPERS_PER_SUBINDEX=1000000
 
 while [[ $# -gt 0 ]]
 do
@@ -404,6 +405,7 @@ then
         mkdir -p "${INDEX_DIR}/db"
         create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR}
         cd ${INDEX_DIR}
+        # TODO make num subindices a parameter
         for subindex_to_merge in subindex_{1..9}
         do
             indexmerger subindex_0 ${subindex_to_merge} no

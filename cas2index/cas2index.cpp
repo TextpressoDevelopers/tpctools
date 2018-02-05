@@ -65,7 +65,7 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Error: " << e.what() << "\n";
         return (EXIT_FAILURE);
     }
-    tpc::index::IndexManager indexManager(indexpath, false, true);
+    tpc::index::IndexManager indexManager(indexpath, false, false);
     if (!fileList.empty()) {
         std::ifstream infile(fileList);
         string filename;
