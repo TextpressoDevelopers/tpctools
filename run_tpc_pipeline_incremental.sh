@@ -16,7 +16,7 @@ function usage {
     echo "  -i --index-dir    directory for the lucene index"
     echo "  -P --num-proc     maximum number of parallel processes"
     echo "  -e --exclude-step do not execute the steps specified by a comma separated list of step names. Step names "
-    echo "                    are: download_pdf, download_xml,cas1,cas2,bib,index,invert_img,remove_invalidated."
+    echo "                    are: download_pdf,download_xml,cas1,cas2,bib,index,invert_img,remove_invalidated."
     echo "  -h --help         display help"
     exit 1
 }
@@ -163,6 +163,7 @@ fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "download_pdf") == "0" ]]
 then
+    echo "Downloading pdf papers ..."
     mkdir -p ${PDF_DIR}
     # 1.2. download new pdf files incrementally from tazendra
     # 1.2.1 download pdf files
@@ -198,7 +199,7 @@ then
     for ((i=1; i<=${N_PROC}; i++))
     do
         grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
-        articles2cas -i ${PDF_DIR}/C.\ elegans -l /tmp/tmplist_$i.txt -t 1 -o C.\ elegans -p &>/dev/null &
+        articles2cas -i ${PDF_DIR}/C.\ elegans -l /tmp/tmplist_$i.txt -t 1 -o C.\ elegans -p &
         n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
     done
     wait
