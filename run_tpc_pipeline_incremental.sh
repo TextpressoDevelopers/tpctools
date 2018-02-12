@@ -16,7 +16,7 @@ function usage {
     echo "  -i --index-dir    directory for the lucene index"
     echo "  -P --num-proc     maximum number of parallel processes"
     echo "  -e --exclude-step do not execute the steps specified by a comma separated list of step names. Step names "
-    echo "                    are: download,cas1,cas2,bib,index,invert_img,remove_invalidated."
+    echo "                    are: download_pdf, download_xml,cas1,cas2,bib,index,invert_img,remove_invalidated."
     echo "  -h --help         display help"
     exit 1
 }
@@ -119,9 +119,9 @@ diffxml_list=$(mktemp)
 #####                      1. DOWNLOAD PAPERS                               #####
 #################################################################################
 
-if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "download") == "0" ]]
+if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "download_xml") == "0" ]]
 then
-    echo "Downloading papers ..."
+    echo "Downloading xml papers ..."
     # 1.1 XML FROM PMCOA
 
     # 1.1.1 create directory for unclassified xml files
@@ -156,7 +156,14 @@ then
     cat ${diffxml_list} | xargs -I {} echo "${XML_DIR}/{}" > ${newxml_local_list}
     # 1.1.6 compress nxml and put images in a separate directory
     cat ${newxml_local_list} | xargs -I {} -n1 -P ${N_PROC} sh -c 'gzip "{}"/*.nxml; mkdir "{}"/images; ls -d "{}"/* | grep -v .nxml | grep -v "{}"/images | xargs -I [] mv [] "{}"/images'
+else
+     echo "Download phase for xml skipped. Using files in ${PDF_DIR} and ${XML_DIR}"
+    find ${XML_DIR} -mindepth 1 -maxdepth 1 -type d > ${newxml_local_list}
+fi
 
+if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "download_pdf") == "0" ]]
+then
+    mkdir -p ${PDF_DIR}
     # 1.2. download new pdf files incrementally from tazendra
     # 1.2.1 download pdf files
     getpdfs.py -l ${logfile} -L INFO "${PDF_DIR}"
@@ -167,9 +174,8 @@ then
     download_pdfinfo.pl /usr/local/textpresso/celegans_bib/
     extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
 else
-    echo "Download phase skipped. Using files in ${PDF_DIR} and ${XML_DIR}"
+    echo "Download phase for pdf skipped. Using files in ${PDF_DIR} and ${XML_DIR}"
     # use current files as 'new' and process them
-    find ${XML_DIR} -mindepth 1 -maxdepth 1 -type d > ${newxml_local_list}
     find ${PDF_DIR} -mindepth 3 -maxdepth 3 -name "*.pdf" > ${newpdf_list}
     # remove previous tpcas versions
 fi
