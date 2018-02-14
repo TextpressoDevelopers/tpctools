@@ -101,6 +101,10 @@ case $key in
     -h|--help)
     usage
     ;;
+    *)
+    echo "wrong argument: $key"
+    echo
+    usage
 esac
 done
 
@@ -412,14 +416,28 @@ then
         mkdir -p "${INDEX_DIR}/db"
         create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR}
         cd ${INDEX_DIR}
-        # TODO make num subindices a parameter
-        for subindex_to_merge in subindex_{1..9}
+        num_subidx_step=$(echo "${PAPERS_PER_SUBINDEX}/100000" | bc)
+        first_idx_in_master=0
+        final_counter=0
+        last_idx_in_master=${num_subidx_step}
+        num_subidx=$(ls | grep "subindex_" | wc -l)
+        found="0"
+        while [[ ${found} == "0" ]]
         do
-            indexmerger subindex_0 ${subindex_to_merge} no
-        done
-        for subindex_to_merge in subindex_{11..17}
-        do
-            indexmerger subindex_10 ${subindex_to_merge} no
+            if [[ ${last_idx_in_master} -ge ${num_subidx} ]]
+            then
+                last_idx_in_master=${num_subidx}
+                found="1"
+            fi
+            for ((i=$((first_idx_in_master + 1)); i<=$((last_idx_in_master-1)); i++))
+            do
+                indexmerger subindex_${first_idx_in_master} subindex_${i} no
+                rm -rf subindex_${i}
+            done
+            mv subindex_${first_idx_in_master} subindex_${final_counter}
+            first_idx_in_master=$((first_idx_in_master + num_subidx_step))
+            last_idx_in_master=$((last_idx_in_master + num_subidx_step))
+            final_counter=$((final_counter + 1))
         done
         saveidstodb -i ${INDEX_DIR}
     else
