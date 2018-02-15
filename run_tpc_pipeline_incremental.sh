@@ -374,15 +374,23 @@ then
     getbib "${CAS2_DIR}/C. elegans Supplementals"
 
     # 4.2 xml
-    tempdir=$(mktemp -d)
-    num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(ls "${TMP_DIR}/tpcas-2/xml" | wc -l) / ${N_PROC}))")
-    ls "${TMP_DIR}/tpcas-2/xml" | sed 's/.tpcas.gz//g' | split -l ${num_papers_to_process_together} - ${tempdir}/file_to_process-
-    for file_list in $(ls ${tempdir})
-    do
-        getbib4nxml "${CAS2_DIR}/PMCOA" -f ${tempdir}/${file_list} &
-    done
-    wait
-    rm -rf ${tempdir}
+    cas_dir_to_process="${CAS2_DIR}/PMCOA"
+    if [[ -d "${TMP_DIR}/tpcas-2/xml" ]]
+    then
+        cas_dir_to_process="${TMP_DIR}/tpcas-2/xml"
+    fi
+    if [[ $(ls ${cas_dir_to_process} | wc -l) != "0" ]]
+    then
+        tempdir=$(mktemp -d)
+        num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(ls "${cas_dir_to_process}" | wc -l) / ${N_PROC}))")
+        ls "${cas_dir_to_process}" | sed 's/.tpcas.gz//g' | split -l ${num_papers_to_process_together} - ${tempdir}/file_to_process-
+        for file_list in $(ls ${tempdir})
+        do
+            getbib4nxml "${CAS2_DIR}/PMCOA" -f ${tempdir}/${file_list} &
+        done
+        wait
+        rm -rf ${tempdir}
+    fi
 fi
 
 #################################################################################

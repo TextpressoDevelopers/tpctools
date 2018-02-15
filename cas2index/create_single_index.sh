@@ -77,5 +77,6 @@ do
 done
 rm -rf ${INDEX_OUT_DIR}/tmpindex*
 rm -rf ${tempdir}
+mkdir "${INDEX_OUT_DIR}/db"
 updatecorpuscounter -i ${INDEX_OUT_DIR}
 exit 0

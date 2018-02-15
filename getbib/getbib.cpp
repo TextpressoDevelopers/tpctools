@@ -127,6 +127,8 @@ void addCasFile(const char* pszInput, string indexdescriptor) {
             uima::ErrorInfo errInfo = e.getErrorInfo();
             std::cerr << "Error " << errInfo.getErrorId() << " " << errInfo.getMessage() << std::endl;
             std::cerr << errInfo << std::endl;
+        } catch (std::logic_error e) {
+            std::cerr << "Logic error" << std::endl;
         }
 
 
