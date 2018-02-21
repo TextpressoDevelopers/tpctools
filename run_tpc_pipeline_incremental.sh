@@ -174,10 +174,6 @@ then
     getpdfs.py -l ${logfile} -L INFO "${PDF_DIR}"
     grep -oP "Downloading paper: .* to \K.*\.pdf" ${logfile} > ${newpdf_list}
     grep -oP "Removing .* paper \K.*" ${logfile} > ${removedpdf_list}
-    # 1.2.2 download bib info for pdfs
-    mkdir -p /usr/local/textpresso/celegans_bib
-    download_pdfinfo.pl /usr/local/textpresso/celegans_bib/
-    extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
 else
     echo "Download phase for pdf skipped. Using files in ${PDF_DIR} and ${XML_DIR}"
     # use current files as 'new' and process them
@@ -366,6 +362,11 @@ fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "bib") == "0" ]]
 then
+    echo "Downloading bib info for pdf files ..."
+    # 1.2.2 download bib info for pdfs
+    mkdir -p /usr/local/textpresso/celegans_bib
+    download_pdfinfo.pl /usr/local/textpresso/celegans_bib/
+    extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
     echo "Generating bib files ..."
     export TPCAS_PATH=${CAS2_DIR}
 
