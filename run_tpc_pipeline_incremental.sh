@@ -443,7 +443,7 @@ then
                 indexmerger subindex_${first_idx_in_master} subindex_${i} no
                 rm -rf subindex_${i}
             done
-            if [[ "${first_idx_in_master}" != "subindex_${final_counter}" ]]
+            if [[ "subindex_${first_idx_in_master}" != "subindex_${final_counter}" ]]
             then
                 mv subindex_${first_idx_in_master} subindex_${final_counter}
             fi
