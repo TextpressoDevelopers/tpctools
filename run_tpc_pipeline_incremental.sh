@@ -177,7 +177,7 @@ then
 else
     echo "Download phase for pdf skipped. Using files in ${PDF_DIR} and ${XML_DIR}"
     # use current files as 'new' and process them
-    find ${PDF_DIR} -mindepth 3 -maxdepth 3 -name "*.pdf" > ${newpdf_list}
+    find "${PDF_DIR}" -mindepth 3 -maxdepth 3 -name "*.pdf" > ${newpdf_list}
     # remove previous tpcas versions
 fi
 
@@ -424,7 +424,7 @@ then
     then
         mkdir -p "${INDEX_DIR}/db"
         create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR}
-        cd ${INDEX_DIR}
+        cd "${INDEX_DIR}"
         num_subidx_step=$(echo "${PAPERS_PER_SUBINDEX}/100000" | bc)
         first_idx_in_master=0
         final_counter=0
@@ -443,12 +443,16 @@ then
                 indexmerger subindex_${first_idx_in_master} subindex_${i} no
                 rm -rf subindex_${i}
             done
-            mv subindex_${first_idx_in_master} subindex_${final_counter}
+            if [[ "${first_idx_in_master}" != "subindex_${final_counter}" ]]
+            then
+                mv subindex_${first_idx_in_master} subindex_${final_counter}
+            fi
             first_idx_in_master=$((first_idx_in_master + num_subidx_step))
             last_idx_in_master=$((last_idx_in_master + num_subidx_step))
             final_counter=$((final_counter + 1))
         done
         saveidstodb -i ${INDEX_DIR}
+        chmod -R 777 "${INDEX_DIR}/db"
     else
         ## pdf
         templist=$(mktemp)
