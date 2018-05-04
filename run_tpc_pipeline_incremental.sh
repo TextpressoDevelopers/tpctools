@@ -177,9 +177,22 @@ then
 else
     echo "Download phase for pdf skipped. Using files in ${PDF_DIR} and ${XML_DIR}"
     # use current files as 'new' and process them
-    find "${PDF_DIR}" -mindepth 3 -maxdepth 3 -name "*.pdf" > ${newpdf_list}
+    find "${PDF_DIR}/C. elegans" -mindepth 2 -maxdepth 2 -name "*.pdf" > ${newpdf_list}
+    find "${PDF_DIR}/C. elegans Supplementals" -mindepth 2 -maxdepth 2 -name "*.pdf" >> ${newpdf_list}
     # remove previous tpcas versions
 fi
+
+# get the list of pdf files manually included and make a diff with the saved list to identify new files
+find "${PDF_DIR}" -maxdepth 1 -mindepth 1 -type d | grep -v "C. elegans" | awk -F"/" '{print $NF}' | while read pdfdir
+do
+    if [[ ! -f "${PDF_DIR}/${pdfdir}/already_processed.txt" ]]
+    then
+        ls "${PDF_DIR}/${pdfdir}" | awk -F"/" '{print $NF}' | grep -v ".txt" > "${PDF_DIR}/${pdfdir}/to_process.txt"
+    else
+        ls "${PDF_DIR}/${pdfdir}" | awk -F"/" '{print $NF}' | grep -Fxvf "${PDF_DIR}/${pdfdir}/already_processed.txt" | grep -v ".txt" > "${PDF_DIR}/${pdfdir}/to_process.txt"
+    fi
+    ls "${PDF_DIR}/${pdfdir}" | awk -F"/" '{print $NF}' | grep -v ".txt" > "${PDF_DIR}/${pdfdir}/already_processed.txt"
+done
 
 #################################################################################
 #####                      2. GENERATE TPCAS-1                              #####
@@ -189,8 +202,10 @@ if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "cas1") == "0" ]]
 then
     echo "Generating CAS1 files ..."
     # 2.1 PDF FILES
-    mkdir -p ${CAS1_DIR}/C.\ elegans
-    mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
+    find "${PDF_DIR}" -maxdepth 1 -mindepth 1 -type d | awk -F"/" '{print $NF}' | while read pdfdir
+    do
+        mkdir -p "${CAS1_DIR}/${pdfdir}"
+    done
     cd ${CAS1_DIR}
 
     # 2.1.1 c elegans
@@ -217,6 +232,21 @@ then
     wait
     rm /tmp/tmplist_*.txt
 
+    # all other pdf dirs
+    find "${PDF_DIR}" -maxdepth 1 -mindepth 1 -type d | grep -v "C. elegans" | awk -F"/" '{print $NF}' | while read pdfdir
+    do
+        num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(wc -l "${PDF_DIR}/${pdfdir}/to_process.txt" | awk '{print $1}') / ${N_PROC}))")
+        n_lines_to_tail=$(ls "${PDF_DIR}/${pdfdir}" | wc -l)
+        for ((i=1; i<=${N_PROC}; i++))
+        do
+            tail -n ${n_lines_to_tail} "${PDF_DIR}/${pdfdir}/to_process.txt" | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
+            articles2cas -i "${PDF_DIR}/${pdfdir}" -l /tmp/tmplist_$i.txt -t 1 -o "${pdfdir}" -p &
+            n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
+        done
+        wait
+        rm /tmp/tmplist_*.txt
+    done
+
     # 2.2 XML FILES
 
     # remove old versions
@@ -242,6 +272,14 @@ then
     cat ${newxml_local_list} | awk 'BEGIN{FS="/"}{print $NF}' | xargs -n1 -P ${N_PROC} -I {} sh -c 'dirname=$(echo "{}"); rm -rf "$0/PMCOA/${dirname}/images";  ln -fs "$1/${dirname}/images" "$0/PMCOA/${dirname}/images"; find "$0/PMCOA/${dirname}" -name "*.tpcas" | xargs -I [] gzip -f "[]"' ${CAS1_DIR} ${XML_DIR}
     # 2.3.2 pdf
     cat ${newpdf_list} | xargs -n1 -P ${N_PROC} -I {} echo "{}" | awk 'BEGIN{FS="/"}{print $(NF-2)"/"$(NF-1)"/"$NF}' | sed 's/.pdf/.tpcas/g' | xargs -I [] gzip -f "[]"
+    # other pdfs
+    find "${PDF_DIR}" -maxdepth 1 -mindepth 1 -type d | grep -v "C. elegans" | awk -F"/" '{print $NF}' | while read pdfdir
+    do
+        cat ""${PDF_DIR}"/${pdfdir}/to_process.txt" | while read line
+        do
+            find "${pdfdir}/${line}" -name "*.tpcas" | xargs -I {} gzip -f "{}"
+        done
+    done
 fi
 
 #################################################################################
@@ -285,11 +323,24 @@ then
         find "${CAS1_DIR}/C. elegans Supplementals/${line}" -name *.tpcas.gz | xargs -I {} cp "{}" "${TMP_DIR}/tpcas-1/pdf_celegans_sup/${line}.tpcas.gz"
     done
 
+    # all other pdf dirs
+    find "${PDF_DIR}" -maxdepth 1 -mindepth 1 -type d | grep -v "C. elegans" | awk -F"/" '{print $NF}' | while read pdfdir
+    do
+        mkdir -p "${TMP_DIR}/tpcas-1/${pdfdir}"
+        mkdir -p "${TMP_DIR}/tpcas-2/${pdfdir}"
+        mkdir -p "${CAS2_DIR}/${pdfdir}"
+        ls "${CAS1_DIR}/${pdfdir}" | grep -vFxf <(ls "${CAS2_DIR}/${pdfdir}")  | while read line
+        do
+            find "${CAS1_DIR}/${pdfdir}/${line}" -name *.tpcas.gz | xargs -I {} cp "{}" "${TMP_DIR}/tpcas-1/${pdfdir}"
+        done
+    done
+
     # 3.2 APPLY UIMA ANALYSIS
     # create dir structure if it does not exist
     mkdir -p "${TMP_DIR}/tpcas-2/xml"
     mkdir -p "${TMP_DIR}/tpcas-2/pdf_celegans"
     mkdir -p "${TMP_DIR}/tpcas-2/pdf_celegans_sup"
+
 
     # decompress all tpcas files in tmp dir before processing them
     find ${TMP_DIR}/tpcas-1 -name *.tpcas.gz | xargs -n 1 -P ${N_PROC} gunzip
@@ -305,6 +356,13 @@ then
 
     runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/pdf_celegans ${TMP_DIR}/tpcas-2/pdf_celegans
     runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/pdf_celegans_sup ${TMP_DIR}/tpcas-2/pdf_celegans_sup
+
+    # all other pdfs
+    find "${PDF_DIR}" -maxdepth 1 -mindepth 1 -type d | grep -v "C. elegans" | awk -F"/" '{print $NF}' | while read pdfdir
+    do
+        mkdir -p "${TMP_DIR}/tpcas-2/${pdfdir}"
+        runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-1/${pdfdir}" "${TMP_DIR}/tpcas-2/${pdfdir}"
+    done
 
     # 3.3 COMPRESS THE RESULTS
     find ${TMP_DIR}/tpcas-2 -name *.tpcas | xargs -n 1 -P ${N_PROC} gzip
@@ -354,6 +412,21 @@ then
             cp ${TMP_DIR}/tpcas-2/pdf_celegans_sup/${dirname}.tpcas.gz "${CAS2_DIR}/C. elegans Supplementals/${dirname}/${tpcas_file_name}"
         fi
     done
+
+    # all other pdfs
+    find "${PDF_DIR}" -maxdepth 1 -mindepth 1 -type d | grep -v "C. elegans" | awk -F"/" '{print $NF}' | while read pdfdir
+    do
+        ls "${CAS1_DIR}/${pdfdir}" | grep -vFxf <(ls "${CAS2_DIR}/${pdfdir}")  | while read line
+        do
+            tpcas_file_name=$(ls "${CAS1_DIR}/${pdfdir}/${line}/"*.tpcas.gz | head -n1 | awk 'BEGIN{FS="/"}{print $NF}')
+            if [ "${tpcas_file_name}" != "" ]
+            then
+                mkdir -p "${CAS2_DIR}/${pdfdir}/${line}"
+                ln -s "${CAS1_DIR}/${pdfdir}/${line}/images" "${CAS2_DIR}/${pdfdir}/${line}/images"
+                cp "${TMP_DIR}/tpcas-2/${pdfdir}/${line}.tpcas.gz" "${CAS2_DIR}/${pdfdir}/${line}/${tpcas_file_name}"
+            fi
+        done
+    done
 fi
 
 #################################################################################
@@ -392,6 +465,15 @@ then
         wait
         rm -rf ${tempdir}
     fi
+
+    # for all other pdfs, copy the bib files from raw files
+    find "${PDF_DIR}" -maxdepth 1 -mindepth 1 -type d | grep -v "C. elegans" | awk -F"/" '{print $NF}' | while read pdfdir
+    do
+        cat "${PDF_DIR}/${pdfdir}/to_process.txt" | while read line
+        do
+            cp "${PDF_DIR}/${pdfdir}/${line}"/*.bib "${CAS2_DIR}/${pdfdir}/${dirname}/${line}/"
+        done
+    done
 fi
 
 #################################################################################
