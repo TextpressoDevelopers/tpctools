@@ -456,6 +456,10 @@ then
     done
     saveidstodb -i ${INDEX_DIR_CUR}
     chmod -R 777 "${INDEX_DIR_CUR}/db"
+    rm -rf /data2/textpresso/db.bk
+    mv /data2/textpresso/db /data2/textpresso/db.bk
+    mv "${INDEX_DIR_CUR}/db" /data2/textpresso/db
+    ln -s /data2/textpresso/db "${INDEX_DIR_CUR}/db"
     if [[ -d "${INDEX_DIR}_new" ]]
     then
         rm -rf ${INDEX_DIR}
