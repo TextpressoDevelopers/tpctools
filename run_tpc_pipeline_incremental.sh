@@ -462,7 +462,8 @@ then
     ln -s /data2/textpresso/db "${INDEX_DIR_CUR}/db"
     if [[ -d "${INDEX_DIR}_new" ]]
     then
-        rm -rf ${INDEX_DIR}
+        rm -rf "${INDEX_DIR}.bk"
+        mv "${INDEX_DIR}" "${INDEX_DIR}.bk"
         mv ${INDEX_DIR_CUR} ${INDEX_DIR}
     fi
 fi
