@@ -29,6 +29,7 @@ int main(int argc, const char* argv[]) {
     string removeList;
     string onlyFilesList;
     int numPapersPerIndex;
+    bool external;
 
     try {
         desc.add_options()
@@ -43,7 +44,7 @@ int main(int argc, const char* argv[]) {
                  "add files listed in the provided file to the existing indices")
                 ("file-list,f", po::value<string>(&onlyFilesList), "create index using only the files provided in the "
                         "list")
-                ("external,e", po::bool_switch()->default_value(false), "Create external index")
+                ("external,e", po::bool_switch(&external)->default_value(false), "Create external index")
                 ("remove,r", po::value<string>(&removeList));
         p.add("cas-input-directory", 1);
         p.add("index-output-directory", 1);
@@ -65,7 +66,7 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Error: " << e.what() << "\n";
         return (EXIT_FAILURE);
     }
-    tpc::index::IndexManager indexManager(indexpath, false, false);
+    tpc::index::IndexManager indexManager(indexpath, false, external);
     if (!fileList.empty()) {
         std::ifstream infile(fileList);
         string filename;

@@ -54,7 +54,7 @@ then
                 mv "${tpcas2_file}" "${user_dir}/tpcas/${bsname_f_noext}"
                 if [[ -f "${user_dir}/uploadedfiles/${bsname_f_noext}.bib" ]]
                 then
-                    cp "${user_dir}/uploadedfiles/${bsname_noext}.bib" "${user_dir}/tpcas/${bsname_noext}"
+                    cp "${user_dir}/uploadedfiles/${bsname_f_noext}.bib" "${user_dir}/tpcas/${bsname_f_noext}"
                 fi
                 gzip "${user_dir}/tpcas/${bsname_f_noext}/${bsname_f}"
             done
@@ -68,7 +68,7 @@ then
             bibfilename="${casfilename/.tpcas.gz/.bib}"
             if [[ ! -f "${bibfilename}" ]]
             then
-                echo -e "author|<not uploaded>\naccession|<not uploaded>\ntype|<not uploaded>\ntitle|<not uploaded>\njournal|<not uploaded>\ncitation|<not uploaded>\nyear|<not uploaded>\nabstract|<not uploaded>" > "${bibfilename}"
+                echo -e "author|<not uploaded>\naccession|<not uploaded>\ntype|<not uploaded>\ntitle|${line}\njournal|<not uploaded>\ncitation|<not uploaded>\nyear|<not uploaded>\nabstract|<not uploaded>" > "${bibfilename}"
             fi
         done
         grep -xf <(sed -e 's/\.[^.]*$//' ${tmpfile}) <(find . -mindepth 1 -maxdepth 1 -type d | awk -F"/" '{print $NF}') | while read line
