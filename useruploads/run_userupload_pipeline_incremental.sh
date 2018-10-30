@@ -85,9 +85,9 @@ then
                 rm -rf "${user_dir}/luceneindex"
             fi
             mkdir -p "${user_dir}/luceneindex"
-            cas2index -i "${user_dir}/tpcas" -o "${user_dir}/luceneindex" -s 300000 -e
+            cas2index -i ${user_dir}/tpcas -o ${user_dir}/luceneindex -s 300000 -e
             mkdir -p "${user_dir}/luceneindex/db"
-            saveidstodb -i "${user_dir}/luceneindex"
+            saveidstodb -i ${user_dir}/luceneindex
             chmod -R 777 "${user_dir}/luceneindex/db"
         fi
     done
