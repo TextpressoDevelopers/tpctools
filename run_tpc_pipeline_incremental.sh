@@ -181,6 +181,19 @@ else
     # remove previous tpcas versions
 fi
 
+# get the list of pdfs in user folder as well (except C. elegans)
+cd ${PDF_DIR}
+for folder in */ ; do
+    if [ "${folder#C. elegans}" != "$folder" ]
+    then
+      continue
+    fi
+    # folder is the folder created by the user
+    find "$(pwd)/$folder" -name "*.pdf" >> ${newpdf_list}
+    # find "$(pwd)/$folder" -name "*.pdf" | sudo tee -a ${newpdf_list}
+done
+
+
 #################################################################################
 #####                      2. GENERATE TPCAS-1                              #####
 #################################################################################
@@ -188,34 +201,28 @@ fi
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "cas1") == "0" ]]
 then
     echo "Generating CAS1 files ..."
+
     # 2.1 PDF FILES
-    mkdir -p ${CAS1_DIR}/C.\ elegans
-    mkdir -p ${CAS1_DIR}/C.\ elegans\ Supplementals
+    # obtain all the folder names in PDF_DIR then create tpcas1 folders for every corpus
+    for folder in */ ; do
+        mkdir -p "${CAS1_DIR}/${folder}"
+    done
     cd ${CAS1_DIR}
 
-    # 2.1.1 c elegans
-    num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep -v "Supplementals" ${newpdf_list} | wc -l) / ${N_PROC}))")
-    n_lines_to_tail=$(grep -v "Supplementals" ${newpdf_list} | wc -l)
-    for ((i=1; i<=${N_PROC}; i++))
-    do
-        grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | cut -f 1 -d '.' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
-        articles2cas -i ${PDF_DIR}/C.\ elegans -l /tmp/tmplist_$i.txt -t 1 -o C.\ elegans -p &
-        n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
+    # generate TPCAS-1 for every corpus
+    for folder in */ ; do
+        echo ${folder}
+        num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep "${PDF_DIR}/${folder}" ${newpdf_list} | wc -l) / ${N_PROC}))")
+        n_lines_to_tail=$(grep "${PDF_DIR}/${folder}" ${newpdf_list} | wc -l)
+        for ((i=1; i<=${N_PROC}; i++))
+        do
+            grep "${PDF_DIR}/${folder}" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
+            articles2cas -i "${PDF_DIR}/${folder}" -l /tmp/tmplist_$i.txt -t 1 -o "${folder}" -p &
+            n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
+        done
+        wait
+        rm /tmp/tmplist_*.txt
     done
-    wait
-    rm /tmp/tmplist_*.txt
-
-    # 2.1.2 c elegans supplementals
-    num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep "Supplementals" ${newpdf_list} | wc -l) / ${N_PROC}))")
-    n_lines_to_tail=$(grep "Supplementals" ${newpdf_list} | wc -l)
-    for ((i=1; i<=${N_PROC}; i++))
-    do
-        grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
-        articles2cas -i ${PDF_DIR}/C.\ elegans\ Supplementals -l /tmp/tmplist_$i.txt -t 1 -o C.\ elegans\ Supplementals -p &
-        n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
-    done
-    wait
-    rm /tmp/tmplist_*.txt
 
     # 2.2 XML FILES
 
@@ -241,7 +248,7 @@ then
     # 2.3.1 xml
     cat ${newxml_local_list} | awk 'BEGIN{FS="/"}{print $NF}' | xargs -n1 -P ${N_PROC} -I {} sh -c 'dirname=$(echo "{}"); rm -rf "$0/PMCOA/${dirname}/images";  ln -fs "$1/${dirname}/images" "$0/PMCOA/${dirname}/images"; find "$0/PMCOA/${dirname}" -name "*.tpcas" | xargs -I [] gzip -f "[]"' ${CAS1_DIR} ${XML_DIR}
     # 2.3.2 pdf
-    cat ${newpdf_list} | xargs -n1 -P ${N_PROC} -I {} echo "{}" | awk 'BEGIN{FS="/"}{print $(NF-2)"/"$(NF-1)"/"$NF}' | sed 's/.pdf/.tpcas/g' | xargs -I [] gzip -f "[]"
+    cat ${newpdf_list} | xargs -n1 -P ${N_PROC} -I {} echo "{}" | awk 'BEGIN{FS="/"}{print $(NF-2)"/"$(NF-1)"/"$NF}' | sed 's/\.pdf/\.tpcas/g' | xargs -I [] gzip -f "[]"
 fi
 
 #################################################################################
@@ -273,26 +280,27 @@ then
     done
 
     # 3.1.2 pdf
-    mkdir -p ${TMP_DIR}/tpcas-1/pdf_celegans
-    mkdir -p ${TMP_DIR}/tpcas-1/pdf_celegans_sup
-    grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read line
-    do
-        find "${CAS1_DIR}/C. elegans/${line}" -name *.tpcas.gz | xargs -I {} cp "{}" "${TMP_DIR}/tpcas-1/pdf_celegans/${line}.tpcas.gz"
+    for folder in */ ; do
+        mkdir -p ${TMP_DIR}/tpcas-1/"${folder}"
     done
 
-    grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read line
+    cat ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read line
     do
-        find "${CAS1_DIR}/C. elegans Supplementals/${line}" -name *.tpcas.gz | xargs -I {} cp "{}" "${TMP_DIR}/tpcas-1/pdf_celegans_sup/${line}.tpcas.gz"
+        # find "${CAS1_DIR}/" -name *${line}.tpcas.gz
+        tpcas1_file=$(find "${CAS1_DIR}/" -name *${line}.tpcas.gz)
+        tpcas1_foldername=$(echo "${tpcas1_file}" | awk -F"/" '{print $(NF-2)}')
+        echo "${tpcas1_file}" | xargs -I {} sudo cp "{}" "${TMP_DIR}/tpcas-1/${tpcas1_foldername}/${line}.tpcas.gz"
     done
 
     # 3.2 APPLY UIMA ANALYSIS
     # create dir structure if it does not exist
     mkdir -p "${TMP_DIR}/tpcas-2/xml"
-    mkdir -p "${TMP_DIR}/tpcas-2/pdf_celegans"
-    mkdir -p "${TMP_DIR}/tpcas-2/pdf_celegans_sup"
+    for folder in */ ; do
+        mkdir -p ${TMP_DIR}/tpcas-2/"${folder}"
+    done
 
     # decompress all tpcas files in tmp dir before processing them
-    find ${TMP_DIR}/tpcas-1 -name *.tpcas.gz | xargs -n 1 -P ${N_PROC} gunzip
+    find ${TMP_DIR}/tpcas-1 -name "*.tpcas.gz" -print0 | xargs -0 -n 1 -P ${N_PROC} gunzip
 
     # remove old versions
     awk -F"/" '{print $NF}' ${newxml_local_list} | xargs -I {} rm -rf "${CAS2_DIR}/PMCOA/{}"
@@ -303,16 +311,19 @@ then
     done
     wait
 
-    runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/pdf_celegans ${TMP_DIR}/tpcas-2/pdf_celegans
-    runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/pdf_celegans_sup ${TMP_DIR}/tpcas-2/pdf_celegans_sup
+    # UIMA analysis for pdf files
+    for folder in */ ; do
+        runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-1/${folder}" "${TMP_DIR}/tpcas-2/${folder}"
+    done
 
     # 3.3 COMPRESS THE RESULTS
-    find ${TMP_DIR}/tpcas-2 -name *.tpcas | xargs -n 1 -P ${N_PROC} gzip
+    find ${TMP_DIR}/tpcas-2 -name *.tpcas -print0 | xargs -0 -n 1 -P ${N_PROC} gzip
 
     # 3.4 COPY TPCAS1 to TPCAS2 DIRS AND REPLACE FILES WITH NEW ONES
     mkdir -p "${CAS2_DIR}/PMCOA"
-    mkdir -p "${CAS2_DIR}/C. elegans"
-    mkdir -p "${CAS2_DIR}/C. elegans Supplementals"
+    for folder in */ ; do
+        mkdir -p "${CAS2_DIR}/${folder}"
+    done
 
     # 3.4.1 xml
     cat ${newxml_local_list} | while read line
@@ -332,26 +343,18 @@ then
     done
 
     # 3.4.2 pdf
-    grep -v "Supplementals" ${newpdf_list} | while read line
+
+    cat ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read line
     do
         dirname=$(echo ${line} | awk -F"/" '{print $(NF-1)}')
-        tpcas_file_name=$(ls "${CAS1_DIR}/C. elegans/${dirname}/"*.tpcas.gz | head -n1 | awk 'BEGIN{FS="/"}{print $NF}')
+        tpcas_file=$(find "${CAS1_DIR}"/ -name *${line}.tpcas.gz)
+        corpus_name=$(echo "${tpcas_file}" | awk -F"/" '{print $(NF-2)}')
+        tpcas_file_name=$(ls "${CAS1_DIR}/${corpus_name}/${dirname}/"*.tpcas.gz | head -n1 | awk 'BEGIN{FS="/"}{print $NF}')
         if [ "${tpcas_file_name}" != "" ]
         then
-            mkdir -p "${CAS2_DIR}/C. elegans/"${dirname}
-            ln -s "${CAS1_DIR}/C. elegans/${dirname}/images" "${CAS2_DIR}/C. elegans/${dirname}/images"
-            cp ${TMP_DIR}/tpcas-2/pdf_celegans/${dirname}.tpcas.gz "${CAS2_DIR}/C. elegans/${dirname}/${tpcas_file_name}"
-        fi
-    done
-    grep "Supplementals" ${newpdf_list} | while read line
-    do
-        dirname=$(echo ${line} | awk -F"/" '{print $(NF-1)}')
-        tpcas_file_name=$(ls "${CAS1_DIR}/C. elegans Supplementals/${dirname}/"*.tpcas.gz | head -n1 | awk 'BEGIN{FS="/"}{print $NF}')
-        if [ "${tpcas_file_name}" != "" ]
-        then
-            mkdir -p "${CAS2_DIR}/C. elegans Supplementals/"${dirname}
-            ln -s "${CAS1_DIR}/C. elegans Supplementals/${dirname}/images" "${CAS2_DIR}/C. elegans Supplementals/${dirname}/images"
-            cp ${TMP_DIR}/tpcas-2/pdf_celegans_sup/${dirname}.tpcas.gz "${CAS2_DIR}/C. elegans Supplementals/${dirname}/${tpcas_file_name}"
+            mkdir -p "${CAS2_DIR}/${corpus_name}/"${dirname}
+            ln -s "${CAS1_DIR}/${corpus_name}/${dirname}/images" "${CAS2_DIR}/${corpus_name}/${dirname}/images"
+            cp "${TMP_DIR}/tpcas-2/${corpus_name}/${dirname}.tpcas.gz" "${CAS2_DIR}/${corpus_name}/${dirname}/${tpcas_file_name}"
         fi
     done
 fi
@@ -400,14 +403,11 @@ fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "invert_img") == "0" ]]
 then
-    echo "Inverting images ..."
-    grep -v "Supplementals" ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read paperdir
+    cat ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read line
     do
-        cmykinverter "${CAS1_DIR}/C. elegans/${paperdir}/images"
-    done
-    grep "Supplementals" ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read paperdir
-    do
-        cmykinverter "${CAS1_DIR}/C. elegans Supplementals/${paperdir}/images"
+        tpcas_file=$(find "${CAS1_DIR}"/ -name *${line}.tpcas.gz)
+        corpus_name=$(echo "${tpcas_file}" | awk -F"/" '{print $(NF-2)}')
+        cmykinverter "${CAS1_DIR}/${corpus_name}/${line}/images"
     done
 fi
 
