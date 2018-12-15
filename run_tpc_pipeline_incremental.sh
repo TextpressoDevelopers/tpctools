@@ -289,7 +289,7 @@ then
         # find "${CAS1_DIR}/" -name *${line}.tpcas.gz
         tpcas1_file=$(find "${CAS1_DIR}/" -name *${line}.tpcas.gz)
         tpcas1_foldername=$(echo "${tpcas1_file}" | awk -F"/" '{print $(NF-2)}')
-        echo "${tpcas1_file}" | xargs -I {} sudo cp "{}" "${TMP_DIR}/tpcas-1/${tpcas1_foldername}/${line}.tpcas.gz"
+        echo "${tpcas1_file}" | xargs -I {} cp "{}" "${TMP_DIR}/tpcas-1/${tpcas1_foldername}/${line}.tpcas.gz"
     done
 
     # 3.2 APPLY UIMA ANALYSIS
@@ -376,6 +376,7 @@ then
     # 4.1 pdf
     getbib "${CAS2_DIR}/C. elegans"
     getbib "${CAS2_DIR}/C. elegans Supplementals"
+    getbib "${CAS2_DIR}/daniel_pdf"
 
     # 4.2 xml
     cas_dir_to_process="${CAS2_DIR}/PMCOA"
