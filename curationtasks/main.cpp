@@ -62,7 +62,7 @@ int main(int argc, char * argv[]) {
     q.categories_and_ed = !p.exist("boolorcategories");
     std::string printoptions(p.get<std::string>("print"));
 
-    IndexManager indexManager = IndexManager("/usr/local/textpresso/luceneindex", true);
+    IndexManager indexManager = IndexManager(INDEX_ROOT_LOCATION, CAS_ROOT_LOCATION, true);
     SearchResults searchResults = indexManager.search_documents(q);
 
     vector<string> txt_output;
