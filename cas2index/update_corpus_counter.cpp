@@ -23,13 +23,16 @@ int main(int argc, const char* argv[]) {
 
     // arguments
     string inputDir;
+    string casDir;
 
     try {
         desc.add_options()
                 ("help,h", "produce help message")
                 ("index_dir,i", po::value<string>(&inputDir)->required(),
-                 "index directory where to read the data and store the counter file");
-        p.add("cas-input-directory", 1);
+                 "index directory where to read the data and store the counter file")
+                ("cas_dir,c", po::value<string>(&casDir)->required(),
+                 "cas directory that has tpcas-2 files");
+        p.add("cas-input-directory", -1);
         po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
         po::notify(vm);
 
@@ -45,6 +48,6 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Error: " << e.what() << "\n";
         return (EXIT_FAILURE);
     }
-    tpc::index::IndexManager indexManager(inputDir, false, false);
+    tpc::index::IndexManager indexManager(inputDir, casDir, false, false);
     indexManager.calculate_and_save_corpus_counter();
 }
