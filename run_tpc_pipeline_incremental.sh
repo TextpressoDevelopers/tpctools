@@ -190,7 +190,6 @@ for folder in */ ; do
     fi
     # folder is the folder created by the user
     find "$(pwd)/$folder" -name "*.pdf" >> ${newpdf_list}
-    # find "$(pwd)/$folder" -name "*.pdf" | sudo tee -a ${newpdf_list}
 done
 
 
@@ -284,12 +283,11 @@ then
         mkdir -p ${TMP_DIR}/tpcas-1/"${folder}"
     done
 
-    cat ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read line
+    cat ${newpdf_list} | awk -F"/" '{print $(NF-2)"/"$(NF-1)}' | while read line
     do
-        # find "${CAS1_DIR}/" -name *${line}.tpcas.gz
-        tpcas1_file=$(find "${CAS1_DIR}/" -name *${line}.tpcas.gz)
-        tpcas1_foldername=$(echo "${tpcas1_file}" | awk -F"/" '{print $(NF-2)}')
-        echo "${tpcas1_file}" | xargs -I {} cp "{}" "${TMP_DIR}/tpcas-1/${tpcas1_foldername}/${line}.tpcas.gz"
+        tpcas1_filename=$(echo ${line} | awk -F"/" '{print $(NF)}')
+        tpcas1_file=$(echo "${CAS1_DIR}/${line}/${tpcas1_filename}.tpcas.gz")
+        echo ${tpcas1_file} | xargs -I {} cp "{}" "${TMP_DIR}/tpcas-1/${line}.tpcas.gz"
     done
 
     # 3.2 APPLY UIMA ANALYSIS
@@ -344,18 +342,14 @@ then
 
     # 3.4.2 pdf
 
-    cat ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read line
+    cat ${newpdf_list} | awk -F"/" '{print $(NF-2)"/"$(NF-1)}' | while read line
     do
-        dirname=$(echo ${line} | awk -F"/" '{print $(NF-1)}')
-        tpcas_file=$(find "${CAS1_DIR}"/ -name *${line}.tpcas.gz)
-        corpus_name=$(echo "${tpcas_file}" | awk -F"/" '{print $(NF-2)}')
-        tpcas_file_name=$(ls "${CAS1_DIR}/${corpus_name}/${dirname}/"*.tpcas.gz | head -n1 | awk 'BEGIN{FS="/"}{print $NF}')
-        if [ "${tpcas_file_name}" != "" ]
-        then
-            mkdir -p "${CAS2_DIR}/${corpus_name}/"${dirname}
-            ln -s "${CAS1_DIR}/${corpus_name}/${dirname}/images" "${CAS2_DIR}/${corpus_name}/${dirname}/images"
-            cp "${TMP_DIR}/tpcas-2/${corpus_name}/${dirname}.tpcas.gz" "${CAS2_DIR}/${corpus_name}/${dirname}/${tpcas_file_name}"
-        fi
+        dir_name=$(echo ${line} | awk -F"/" '{print $(NF)}')
+        corpus_name=$(echo ${line} | awk -F"/" '{print $(NF-1)}')
+        tpcas_file=$(echo "${CAS1_DIR}/${line}/${dir_name}.tpcas.gz")
+        mkdir -p "${CAS2_DIR}/${corpus_name}/"${dir_name}
+        ln -s "${CAS1_DIR}/${corpus_name}/${dir_name}/images" "${CAS2_DIR}/${corpus_name}/${dir_name}/images"
+        cp "${TMP_DIR}/tpcas-2/${line}/${dir_name}.tpcas.gz" "${CAS2_DIR}/${line}/${dir_name}.tpcas.gz"
     done
 fi
 
@@ -376,7 +370,7 @@ then
     # 4.1 pdf
     getbib "${CAS2_DIR}/C. elegans"
     getbib "${CAS2_DIR}/C. elegans Supplementals"
-    getbib "${CAS2_DIR}/daniel_pdf"
+    # getbib "${CAS2_DIR}/daniel_pdf"
 
     # 4.2 xml
     cas_dir_to_process="${CAS2_DIR}/PMCOA"
@@ -404,11 +398,11 @@ fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "invert_img") == "0" ]]
 then
-    cat ${newpdf_list} | awk -F"/" '{print $(NF-1)}' | while read line
+    cat ${newpdf_list} | awk -F"/" '{print $(NF-2)"/"$(NF-1)}' | while read line
     do
-        tpcas_file=$(find "${CAS1_DIR}"/ -name *${line}.tpcas.gz)
-        corpus_name=$(echo "${tpcas_file}" | awk -F"/" '{print $(NF-2)}')
-        cmykinverter "${CAS1_DIR}/${corpus_name}/${line}/images"
+        dir_name=$(echo ${line} | awk -F"/" '{print $(NF)}')
+        corpus_name=$(echo ${line} | awk -F"/" '{print $(NF-1)}')
+        cmykinverter "${CAS1_DIR}/${line}/images"
     done
 fi
 
