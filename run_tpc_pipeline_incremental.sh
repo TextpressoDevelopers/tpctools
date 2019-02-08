@@ -16,7 +16,8 @@ function usage {
     echo "  -i --index-dir    directory for the lucene index"
     echo "  -P --num-proc     maximum number of parallel processes"
     echo "  -e --exclude-step do not execute the steps specified by a comma separated list of step names. Step names "
-    echo "                    are: download_pdf,download_xml,cas1,cas2,bib,index,invert_img,remove_invalidated."
+    echo "                    are: download_pdf,download_xml,cas1,cas2,bib,index,invert_img,remove_invalidated,
+                              remove_temp."
     echo "  -h --help         display help"
     exit 1
 }
@@ -349,7 +350,7 @@ then
         tpcas_file=$(echo "${CAS1_DIR}/${line}/${dir_name}.tpcas.gz")
         mkdir -p "${CAS2_DIR}/${corpus_name}/"${dir_name}
         ln -s "${CAS1_DIR}/${corpus_name}/${dir_name}/images" "${CAS2_DIR}/${corpus_name}/${dir_name}/images"
-        cp "${TMP_DIR}/tpcas-2/${line}/${dir_name}.tpcas.gz" "${CAS2_DIR}/${line}/${dir_name}.tpcas.gz"
+        cp "${TMP_DIR}/tpcas-2/${line}.tpcas.gz" "${CAS2_DIR}/${line}/${dir_name}.tpcas.gz"
     done
 fi
 
@@ -481,8 +482,11 @@ fi
 
 echo "Cleaning up temp files ..."
 # delete tmp files
-rm -rf ${TMP_DIR}/tpcas-1
-rm -rf ${TMP_DIR}/tpcas-2
+if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "remove_temp") == "0" ]] # for testing/debugging purposes
+then
+    rm -rf ${TMP_DIR}/tpcas-1
+    rm -rf ${TMP_DIR}/tpcas-2
+fi
 rm ${logfile}
 rm ${newpdf_list}
 rm ${newxml_list}
