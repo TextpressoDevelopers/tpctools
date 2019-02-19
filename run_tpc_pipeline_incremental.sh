@@ -163,7 +163,7 @@ then
     cat ${newxml_local_list} | xargs -I {} -n1 -P ${N_PROC} sh -c 'gzip "{}"/*.nxml; mkdir "{}"/images; ls -d "{}"/* | grep -v .nxml | grep -v "{}"/images | xargs -I [] mv [] "{}"/images'
 else
      echo "Download phase for xml skipped. Using files in ${PDF_DIR} and ${XML_DIR}"
-    find ${XML_DIR} -mindepth 1 -maxdepth 1 -type d > ${newxml_local_list}
+    find -L ${XML_DIR} -mindepth 1 -maxdepth 1 -type d > ${newxml_local_list}
 fi
 
 if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "download_pdf") == "0" ]]
@@ -178,20 +178,9 @@ then
 else
     echo "Download phase for pdf skipped. Using files in ${PDF_DIR} and ${XML_DIR}"
     # use current files as 'new' and process them
-    find "${PDF_DIR}" -mindepth 3 -maxdepth 3 -name "*.pdf" > ${newpdf_list}
+    find -L "${PDF_DIR}" -mindepth 3 -maxdepth 3 -name "*.pdf" > ${newpdf_list}
     # remove previous tpcas versions
 fi
-
-# get the list of pdfs in user folder as well (except C. elegans)
-cd ${PDF_DIR}
-for folder in */ ; do
-    if [ "${folder#C. elegans}" != "$folder" ]
-    then
-      continue
-    fi
-    # folder is the folder created by the user
-    find "$(pwd)/$folder" -name "*.pdf" >> ${newpdf_list}
-done
 
 
 #################################################################################
@@ -246,7 +235,7 @@ then
     # 2.3 add images to tpcas directory and gzip
 
     # 2.3.1 xml
-    cat ${newxml_local_list} | awk 'BEGIN{FS="/"}{print $NF}' | xargs -n1 -P ${N_PROC} -I {} sh -c 'dirname=$(echo "{}"); rm -rf "$0/PMCOA/${dirname}/images";  ln -fs "$1/${dirname}/images" "$0/PMCOA/${dirname}/images"; find "$0/PMCOA/${dirname}" -name "*.tpcas" | xargs -I [] gzip -f "[]"' ${CAS1_DIR} ${XML_DIR}
+    cat ${newxml_local_list} | awk 'BEGIN{FS="/"}{print $NF}' | xargs -n1 -P ${N_PROC} -I {} sh -c 'dirname=$(echo "{}"); rm -rf "$0/PMCOA/${dirname}/images";  ln -fs "$1/${dirname}/images" "$0/PMCOA/${dirname}/images"; find -L "$0/PMCOA/${dirname}" -name "*.tpcas" | xargs -I [] gzip -f "[]"' ${CAS1_DIR} ${XML_DIR}
     # 2.3.2 pdf
     cat ${newpdf_list} | xargs -n1 -P ${N_PROC} -I {} echo "{}" | awk 'BEGIN{FS="/"}{print $(NF-2)"/"$(NF-1)"/"$NF}' | sed 's/\.pdf/\.tpcas/g' | xargs -I [] gzip -f "[]"
 fi
@@ -275,7 +264,7 @@ then
             mkdir -p ${TMP_DIR}/tpcas-1/xml/subdir_${subdir_idx}
         fi
         dirname=$(echo ${line} | awk 'BEGIN{FS="/"}{print $NF}')
-        find "${CAS1_DIR}/PMCOA/${dirname}" -name *.tpcas.gz | xargs -I {} cp "{}" "${TMP_DIR}/tpcas-1/xml/subdir_${subdir_idx}/${dirname}.tpcas.gz"
+        find -L "${CAS1_DIR}/PMCOA/${dirname}" -name *.tpcas.gz | xargs -I {} cp "{}" "${TMP_DIR}/tpcas-1/xml/subdir_${subdir_idx}/${dirname}.tpcas.gz"
         i=$((i+1))
     done
 
@@ -299,7 +288,7 @@ then
     done
 
     # decompress all tpcas files in tmp dir before processing them
-    find ${TMP_DIR}/tpcas-1 -name "*.tpcas.gz" -print0 | xargs -0 -n 1 -P ${N_PROC} gunzip
+    find -L ${TMP_DIR}/tpcas-1 -name "*.tpcas.gz" -print0 | xargs -0 -n 1 -P ${N_PROC} gunzip
 
     # remove old versions
     awk -F"/" '{print $NF}' ${newxml_local_list} | xargs -I {} rm -rf "${CAS2_DIR}/PMCOA/{}"
@@ -316,7 +305,7 @@ then
     done
 
     # 3.3 COMPRESS THE RESULTS
-    find ${TMP_DIR}/tpcas-2 -name *.tpcas -print0 | xargs -0 -n 1 -P ${N_PROC} gzip
+    find -L ${TMP_DIR}/tpcas-2 -name *.tpcas -print0 | xargs -0 -n 1 -P ${N_PROC} gzip
 
     # 3.4 COPY TPCAS1 to TPCAS2 DIRS AND REPLACE FILES WITH NEW ONES
     mkdir -p "${CAS2_DIR}/PMCOA"
@@ -473,9 +462,9 @@ then
     echo "Removing invalid papers deleted from server ..."
     # remove deleted or invalidated papers from cas dirs and from index
     templist=$(mktemp)
-    grep -v "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find "{}" -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
+    grep -v "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans/"$(NF-1)}' | xargs -I {} find -L "{}" -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
     cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -r ${templist}
-    grep "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans Supplementals/"$(NF-1)}' | xargs -I {} find "{}"* -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
+    grep "Supplemental" ${removedpdf_list} | awk -v cas2_dir="${CAS2_DIR}" -F"/" '{print cas2_dir"/C. elegans Supplementals/"$(NF-1)}' | xargs -I {} find -L "{}"* -name  *.tpcas.gz | awk -F "/" '{print $(NF-2)"/"$(NF-1)"/"$NF}' > ${templist}
     cas2index -i ${CAS2_DIR} -o ${INDEX_DIR} -r ${templist}
     awk -F"/" '{print $(NF-1)"/"$NF}' ${removedpdf_list} | xargs -I {} sh -c 'rm -rf ${CAS1_DIR}/"{}"*; rm -rf ${CAS2_DIR}/"{}"*'
 fi
