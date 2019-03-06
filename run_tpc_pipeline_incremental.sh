@@ -192,6 +192,7 @@ then
     echo "Generating CAS1 files ..."
 
     # 2.1 PDF FILES
+    cd ${PDF_DIR}
     # obtain all the folder names in PDF_DIR then create tpcas1 folders for every corpus
     for folder in */ ; do
         mkdir -p "${CAS1_DIR}/${folder}"
@@ -269,6 +270,7 @@ then
     done
 
     # 3.1.2 pdf
+    cd ${CAS1_DIR}
     for folder in */ ; do
         mkdir -p ${TMP_DIR}/tpcas-1/"${folder}"
     done
@@ -360,7 +362,7 @@ then
     # 4.1 pdf
     getbib "${CAS2_DIR}/C. elegans"
     getbib "${CAS2_DIR}/C. elegans Supplementals"
-    # getbib "${CAS2_DIR}/daniel_pdf"
+
 
     # 4.2 xml
     cas_dir_to_process="${CAS2_DIR}/PMCOA"

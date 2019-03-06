@@ -25,7 +25,8 @@ void convert_dir_recursively(const string& inputDir, const string& outputDir, co
                              bool use_parent_dir_as_outname) {
     for (directory_iterator dit(inputDir); dit != directory_iterator(); ++dit) {
         if ((is_regular_file(*dit) && (dit->path().filename().string().find(".nxml.gz") != string::npos ||
-                dit->path().filename().string().find(".pdf") != string::npos)) && ((filelist_set.empty() ||
+                dit->path().filename().string().find(".pdf") != string::npos ||
+                dit->path().filename().string().find(".txt") != string::npos)) && ((filelist_set.empty() ||
                 filelist_set.find(dit->path().filename().string()) != filelist_set.end()) &&
                 (dirlist_set.empty() || dirlist_set.find(dit->path().parent_path().filename().string()) !=
                                                 dirlist_set.end()))) {
@@ -41,6 +42,7 @@ void convert_dir_recursively(const string& inputDir, const string& outputDir, co
                     }
                 }
             } else {
+                cout << dit->path().string() << endl;
                 CASManager::convert_raw_file_to_cas1(dit->path().string(), fileType, outputDir,
                                                      use_parent_dir_as_outname);
             }
@@ -72,7 +74,7 @@ int main(int argc, const char* argv[]) {
                 ("cas-output-directory,o", po::value<string>(&outputDir)->required(),
                  "directory where to write cas files")
                 ("input-files-type,t", po::value<int>(&fileType)->default_value(1),
-                 "type of files to process. 1 for pdf, 2 for xml")
+                 "type of files to process. 1 for pdf, 2 for xml, 3 for text")
                 ("dir-list,l", po::value<string>(&dirlist)->default_value(""),
                 "optional list of directory names containing the final files to be processed. Other "
                         "directories are ignored")
@@ -98,7 +100,14 @@ int main(int argc, const char* argv[]) {
         return (EXIT_FAILURE);
     }
 
-    FileType ft = fileType == 1 ? FileType::pdf : FileType::xml;
+    FileType ft;
+    if (fileType == 1) {
+        ft = FileType::pdf;
+    } else if (fileType == 2) {
+        ft = FileType::xml;
+    } else if (fileType == 3) {
+        ft = FileType::txt;
+    }
     if (is_directory(inputDir)) {
         path p(inputDir);
         string literature = p.filename().string();
