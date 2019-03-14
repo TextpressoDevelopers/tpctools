@@ -18,24 +18,13 @@ __author__ = "Valerio Arnaboldi"
 __version__ = "1.0.1"
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Download pdf files from Tazendra server and store them in a local "
-                                                 "directory, after applying name conversion")
-    parser.add_argument("-d", "--delete-old", dest="delete_old", action="store_true",
-                        help="delete old files before downloading the new ones")
-    parser.add_argument("-l", "--log-file", metavar="log_file", dest="log_file", default="info.log", type=str,
-                        help="path to log file")
-    parser.add_argument("-L", "--log-level", metavar="log_level", dest="log_level", default="INFO",
-                        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="log level")
-    parser.add_argument("out_dir", metavar="out_dir", type=str, help="output directory")
-
-    args = parser.parse_args()
-    logging.basicConfig(filename=args.log_file, level=getattr(logging, args.log_level.upper()))
-    if args.delete_old:
-        shutil.rmtree(args.out_dir)
+def download_pdfs(args_delete_old, args_log_file, args_log_level, args_out_dir):
+    logging.basicConfig(filename=args_log_file, level=getattr(logging, args_log_level.upper()))
+    if args_delete_old:
+        shutil.rmtree(args_out_dir)
     try:
-        os.makedirs(os.path.join(args.out_dir, "C. elegans"))
-        os.makedirs(os.path.join(args.out_dir, "C. elegans Supplementals"))
+        os.makedirs(os.path.join(args_out_dir, "C. elegans"))
+        os.makedirs(os.path.join(args_out_dir, "C. elegans Supplementals"))
     except FileExistsError:
         logging.warning("Directories already exist")
     non_nematode_papers = set()
@@ -100,21 +89,21 @@ def main():
                             continue
                         subdir = "C. elegans"
                     if pdfname in non_nematode_papers or pdfname in invalid_papers:
-                        if len(glob.glob(os.path.join(args.out_dir, "C. elegans", pdfname + "*"))) > 0:
-                            for file in glob.glob(os.path.join(args.out_dir, "C. elegans", pdfname + "*")):
+                        if len(glob.glob(os.path.join(args_out_dir, "C. elegans", pdfname + "*"))) > 0:
+                            for file in glob.glob(os.path.join(args_out_dir, "C. elegans", pdfname + "*")):
                                 shutil.rmtree(file)
-                            logging.info("Removing invalid paper " + os.path.join(args.out_dir, "C. elegans", pdfname))
-                        if len(glob.glob(os.path.join(args.out_dir, "C. elegans Supplementals", pdfname + "*"))) > 0:
-                            for file in glob.glob(os.path.join(args.out_dir, "C. elegans Supplementals", pdfname + "*")):
+                            logging.info("Removing invalid paper " + os.path.join(args_out_dir, "C. elegans", pdfname))
+                        if len(glob.glob(os.path.join(args_out_dir, "C. elegans Supplementals", pdfname + "*"))) > 0:
+                            for file in glob.glob(os.path.join(args_out_dir, "C. elegans Supplementals", pdfname + "*")):
                                 shutil.rmtree(file)
-                            logging.info("Removing invalid paper " + os.path.join(args.out_dir,
+                            logging.info("Removing invalid paper " + os.path.join(args_out_dir,
                                                                                   "C. elegans Supplementals", pdfname))
                         continue
                     if filetype == "supplemental":
                         subdir = "C. elegans Supplementals"
                         pdfname += ".sup."
                         skip_file = False
-                        simfiles = glob.glob(os.path.join(args.out_dir, subdir, pdfname, pdfname) + "*.pdf")
+                        simfiles = glob.glob(os.path.join(args_out_dir, subdir, pdfname, pdfname) + "*.pdf")
                         for simfile_name in simfiles:
                             if hashlib.md5(urllib.request.urlopen(pdflink).read()).digest() == \
                                     hashlib.md5(open(simfile_name, "rb").read()).digest():
@@ -145,7 +134,7 @@ def main():
                             stored_num = int(stored_re.group(1))
                         if link_num <= stored_num:
                             continue
-                    files_to_download[pdfname] = (pdflink.replace(" ", "%20"), os.path.join(args.out_dir, subdir,
+                    files_to_download[pdfname] = (pdflink.replace(" ", "%20"), os.path.join(args_out_dir, subdir,
                                                                                             pdfname, pdfname + ".pdf"))
                 else:
                     logging.warning("Skipping file: " + pdflink)
@@ -155,7 +144,7 @@ def main():
     for pdflink, file_path in files_to_download.values():
         try:
             # check if best file selected for download is already present in the dest dir
-            if not args.delete_old and len(glob.glob(file_path)) > 0 and \
+            if not args_delete_old and len(glob.glob(file_path)) > 0 and \
                             hashlib.md5(urllib.request.urlopen(pdflink).read()).digest() == \
                             hashlib.md5(open(file_path, "rb").read()).digest():
                 logging.info("File already present in collection, skipping " + pdflink)
@@ -172,15 +161,27 @@ def main():
             continue
 
     # delete local files that have been removed from server
-    local_files = set(os.listdir(os.path.join(args.out_dir, "C. elegans")))
+    local_files = set(os.listdir(os.path.join(args_out_dir, "C. elegans")))
     for file_to_remove in local_files.difference(all_wbpapers):
-        shutil.rmtree(os.path.join(args.out_dir, "C. elegans", file_to_remove))
+        shutil.rmtree(os.path.join(args_out_dir, "C. elegans", file_to_remove))
         logging.info("Removing deleted paper " + os.path.join("C. elegans", file_to_remove))
-    local_files = set(os.listdir(os.path.join(args.out_dir, "C. elegans Supplementals")))
+    local_files = set(os.listdir(os.path.join(args_out_dir, "C. elegans Supplementals")))
     for file_to_remove in local_files.difference(all_wbpapers):
-        shutil.rmtree(os.path.join(args.out_dir, "C. elegans Supplementals", file_to_remove))
+        shutil.rmtree(os.path.join(args_out_dir, "C. elegans Supplementals", file_to_remove))
         logging.info("Removing deleted paper " + os.path.join("C. elegans Supplementals", file_to_remove))
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description="Download pdf files from Tazendra server and store them in a local "
+                                                 "directory, after applying name conversion")
+    parser.add_argument("-d", "--delete-old", dest="delete_old", action="store_true",
+                        help="delete old files before downloading the new ones")
+    parser.add_argument("-l", "--log-file", metavar="log_file", dest="log_file", default="info.log", type=str,
+                        help="path to log file")
+    parser.add_argument("-L", "--log-level", metavar="log_level", dest="log_level", default="INFO",
+                        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="log level")
+    parser.add_argument("out_dir", metavar="out_dir", type=str, help="output directory")
+
+    args = parser.parse_args()
+
+    download_pdfs(args.delete_old, args.log_file, args.log_level, args.out_dir)
