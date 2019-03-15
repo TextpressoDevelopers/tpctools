@@ -566,33 +566,58 @@ if __name__ == '__main__':
         get_abstracts(os.path.join(CAS2_DIR, "xenbase"), 300)
         create_bib(os.path.join(CAS2_DIR, "xenbase"), "/home/daniel/xenbase_info")
 
+        # 4.2 xml
+        # cas_dir_to_process = "${CAS2_DIR}/PMCOA"
+        # if [[-d "${TMP_DIR}/tpcas-2/xml"]]
+        # then
+        #     cas_dir_to_process = "${TMP_DIR}/tpcas-2/xml"
+        # if [[ $(ls ${cas_dir_to_process} | wc -l) != "0"]]
+        # then
+        # tempdir =$(mktemp - d)
+        # num_papers_to_process_together =$(python3 - c "from math import ceil; print(ceil($(ls "${cas_dir_to_process}" | wc -l) / ${N_PROC}))")
+        # ls "${cas_dir_to_process}" | sed 's/.tpcas.gz//g' | split - l ${num_papers_to_process_together} - ${tempdir} / file_to_process -
+        # for file_list in $(ls ${tempdir})
+        # do
+        #   getbib4nxml "${CAS2_DIR}/PMCOA" - f ${tempdir} /${file_list} &
+        # done
+        # wait
+        # rm - rf ${tempdir}
+        # fi
 
     else:
         print("Skipping bib...")
 
-#
-#     # 4.2 xml
-#     cas_dir_to_process = "${CAS2_DIR}/PMCOA"
-#     if [[-d "${TMP_DIR}/tpcas-2/xml"]]
-#         then
-#     cas_dir_to_process = "${TMP_DIR}/tpcas-2/xml"
-# if [[ $(ls ${cas_dir_to_process} | wc -l) != "0"]]
-# then
-# tempdir =$(mktemp - d)
-# num_papers_to_process_together =$(python3 - c
-#                                   "from math import ceil; print(ceil($(ls "${cas_dir_to_process}" | wc -l) / ${N_PROC}))")
-# ls
-# "${cas_dir_to_process}" | sed
-# 's/.tpcas.gz//g' | split - l ${num_papers_to_process_together} - ${tempdir} / file_to_process -
-# for file_list in $(ls ${tempdir})
-# do
-# getbib4nxml
-# "${CAS2_DIR}/PMCOA" - f ${tempdir} /${file_list} &
-# done
-# wait
-# rm - rf ${tempdir}
-# fi
-# fi
+    #################################################################################
+    #####                     5. INVERT IMAGES                                  #####
+    #################################################################################
+    if 'invert_img' not in excluded_steps:
+        def invert_img_worker(file_id_list, corpus_dir):
+            corpus_dir = '\ '.join(corpus_dir.strip().split(" "))
+            for file_id in file_id_list:
+                os.system("cmykinverter {}".format(os.path.join(corpus_dir, file_id, "images")))
+
+
+        # invert images of each corpus in parallel
+        for corpus in [d for d in os.listdir(CAS2_DIR) if os.path.isdir(os.path.join(CAS2_DIR, d))]:
+            file_id_list = os.listdir(os.path.join(CAS2_DIR, corpus))
+            n_files_per_process = [math.floor(len(file_id_list) / N_PROC)] * N_PROC
+            for i in range(len(file_id_list) % N_PROC):
+                n_files_per_process[i] += 1
+
+            curr_idx = 0
+            invert_img_mp_args = list()
+            for proc_idx in range(N_PROC):
+                invert_img_mp_args.append((file_id_list[curr_idx:curr_idx + n_files_per_process[proc_idx]],
+                                     os.path.join(CAS1_DIR, corpus)))
+                curr_idx += n_files_per_process[proc_idx]
+
+            pool = multiprocessing.Pool(processes=N_PROC)
+            pool.starmap(invert_img_worker, invert_img_mp_args)
+            pool.close()
+            pool.join()
+
+    else:
+        print("Skipping invert_img...")
 
 
     logfile_fp.close()
