@@ -543,23 +543,23 @@ if __name__ == '__main__':
         os.makedirs("/usr/local/textpresso/celegans_bib", exist_ok=True)
 
         # download bibs for C. elegans
-        # subprocess.check_call(['download_pdfinfo.pl', '/usr/local/textpresso/celegans_bib/'])
-        # subprocess.check_call(['extract_pdfbibinfo.pl', '/usr/local/textpresso/celegans_bib/'])
-        #
-        # print("Generating bib files...")
-        # os.chdir(CAS2_DIR)
-        #
-        # def gen_bib_worker(path):
-        #     path = '\ '.join(path.strip().split(" "))
-        #     os.system("getbib {}".format(path))
-        #     print("completed .bib generation for {}".format(path))
-        #
-        # bib_mp_args = [os.path.join(CAS2_DIR, "C. elegans"), os.path.join(CAS2_DIR, "C. elegans Supplementals")]
-        # print(bib_mp_args)
-        # pool = multiprocessing.Pool(processes=2)
-        # pool.map(gen_bib_worker, bib_mp_args)
-        # pool.close()
-        # pool.join()
+        subprocess.check_call(['download_pdfinfo.pl', '/usr/local/textpresso/celegans_bib/'])
+        subprocess.check_call(['extract_pdfbibinfo.pl', '/usr/local/textpresso/celegans_bib/'])
+
+        print("Generating bib files...")
+        os.chdir(CAS2_DIR)
+
+        def gen_bib_worker(path):
+            path = '\ '.join(path.strip().split(" "))
+            os.system("getbib {}".format(path))
+            print("completed .bib generation for {}".format(path))
+
+        bib_mp_args = [os.path.join(CAS2_DIR, "C. elegans"), os.path.join(CAS2_DIR, "C. elegans Supplementals")]
+        print(bib_mp_args)
+        pool = multiprocessing.Pool(processes=2)
+        pool.map(gen_bib_worker, bib_mp_args)
+        pool.close()
+        pool.join()
 
         # generate bib for xenbase or other corpora
         # the paper ids in the corpora directory needs to be the pmid
