@@ -8,6 +8,8 @@ import subprocess
 import gzip
 
 from getpdfs.getpdfs import download_pdfs
+from getbib.download_abstract import get_abstracts
+from getbib.make_bib import create_bib
 import pdf2text
 
 
@@ -495,7 +497,7 @@ if __name__ == '__main__':
             if not os.path.isdir(os.path.join(CAS2_DIR, corpus)):
                 os.mkdir(os.path.join(CAS2_DIR, corpus))
 
-        # # 3.3.1 xml
+        # 3.3.1 xml
         # cat ${newxml_local_list} | while read line
         # do
         # dirname =$(echo ${line} | awk 'BEGIN{FS="/"}{print $NF}')
@@ -518,8 +520,7 @@ if __name__ == '__main__':
         for corpus in [d for d in os.listdir(PDF_DIR) if os.path.isdir(os.path.join(PDF_DIR, d))]:
             for file_id in [d for d in os.listdir(os.path.join(CAS1_DIR, corpus))
                             if os.path.isdir(os.path.join(CAS1_DIR, corpus, d))]:
-                if not os.path.isdir(os.path.join(CAS2_DIR, corpus, file_id)):
-                    os.mkdir(os.path.join(CAS2_DIR, corpus, file_id))
+                os.makedirs(os.path.join(CAS2_DIR, corpus, file_id), exist_ok=True)
                 # create symlink to images folder of CAS1
                 if not os.path.islink(os.path.join(CAS2_DIR, corpus, file_id, "images")):
                     os.symlink(os.path.join(CAS1_DIR, corpus, file_id, "images"),
@@ -531,6 +532,67 @@ if __name__ == '__main__':
 
     else:
         print("skipping cas2...")
+
+    #################################################################################
+    #####                     4. GENERATE BIB FILES                             #####
+    #################################################################################
+
+    if 'bib' not in excluded_steps:
+        # 4.1 download bib info for pdfs
+        print("Donwloading bib info for pdf files...")
+        os.makedirs("/usr/local/textpresso/celegans_bib", exist_ok=True)
+
+        # download bibs for C. elegans
+        # subprocess.check_call(['download_pdfinfo.pl', '/usr/local/textpresso/celegans_bib/'])
+        # subprocess.check_call(['extract_pdfbibinfo.pl', '/usr/local/textpresso/celegans_bib/'])
+        #
+        # print("Generating bib files...")
+        # os.chdir(CAS2_DIR)
+        #
+        # def gen_bib_worker(path):
+        #     path = '\ '.join(path.strip().split(" "))
+        #     os.system("getbib {}".format(path))
+        #     print("completed .bib generation for {}".format(path))
+        #
+        # bib_mp_args = [os.path.join(CAS2_DIR, "C. elegans"), os.path.join(CAS2_DIR, "C. elegans Supplementals")]
+        # print(bib_mp_args)
+        # pool = multiprocessing.Pool(processes=2)
+        # pool.map(gen_bib_worker, bib_mp_args)
+        # pool.close()
+        # pool.join()
+
+        # generate bib for xenbase or other corpora
+        # the paper ids in the corpora directory needs to be the pmid
+        get_abstracts(os.path.join(CAS2_DIR, "xenbase"), 300)
+        create_bib(os.path.join(CAS2_DIR, "xenbase"), "/home/daniel/xenbase_info")
+
+
+    else:
+        print("Skipping bib...")
+
+#
+#     # 4.2 xml
+#     cas_dir_to_process = "${CAS2_DIR}/PMCOA"
+#     if [[-d "${TMP_DIR}/tpcas-2/xml"]]
+#         then
+#     cas_dir_to_process = "${TMP_DIR}/tpcas-2/xml"
+# if [[ $(ls ${cas_dir_to_process} | wc -l) != "0"]]
+# then
+# tempdir =$(mktemp - d)
+# num_papers_to_process_together =$(python3 - c
+#                                   "from math import ceil; print(ceil($(ls "${cas_dir_to_process}" | wc -l) / ${N_PROC}))")
+# ls
+# "${cas_dir_to_process}" | sed
+# 's/.tpcas.gz//g' | split - l ${num_papers_to_process_together} - ${tempdir} / file_to_process -
+# for file_list in $(ls ${tempdir})
+# do
+# getbib4nxml
+# "${CAS2_DIR}/PMCOA" - f ${tempdir} /${file_list} &
+# done
+# wait
+# rm - rf ${tempdir}
+# fi
+# fi
 
 
     logfile_fp.close()
