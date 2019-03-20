@@ -265,6 +265,18 @@ if __name__ == '__main__':
             os.mkdir(PDF_DIR)
         download_pdfs(False, logfile_fp.name, "INFO", PDF_DIR)
 
+        # save the list of files to remove
+        logfile_fp.seek(0)
+        removedpdf_list_fp.seek(0)
+        remove_pattern = 'Removing (deleted|invalid) paper (.*)'
+        line = logfile_fp.readline()
+        while line:
+            line = line.strip()
+            match = re.search(remove_pattern, line)
+            if match:
+                removedpdf_list_fp.write(match.gropu(2))
+            line = logfile_fp.readline()
+
         # logging into newpdf_list and removedpdf_list does not seem necessary
         # grep - oP "Downloading paper: .* to \K.*\.pdf" ${logfile} > ${newpdf_list}
         # grep - oP "Removing .* paper \K.*" ${logfile} > ${removedpdf_list}
@@ -523,8 +535,8 @@ if __name__ == '__main__':
                 os.makedirs(os.path.join(CAS2_DIR, corpus, file_id), exist_ok=True)
                 # create symlink to images folder of CAS1
                 if not os.path.islink(os.path.join(CAS2_DIR, corpus, file_id, "images")):
-                    os.symlink(os.path.join(CAS1_DIR, corpus, file_id, "images"),
-                               os.path.join(CAS2_DIR, corpus, file_id, "images"))
+                    os.system("ln -s {} {}".format(os.path.join(CAS1_DIR, corpus, file_id, "images"),
+                               os.path.join(CAS2_DIR, corpus, file_id, "images")))
                 # copy .tpcas.gz files to CAS2_DIR
                 if not os.path.isfile(os.path.join(CAS2_DIR, corpus, file_id, file_id + ".tpcas.gz")):
                     shutil.copy(os.path.join(TMP_DIR, "tpcas-2", corpus, file_id + ".tpcas.gz"),
@@ -590,7 +602,9 @@ if __name__ == '__main__':
     #################################################################################
     #####                     5. INVERT IMAGES                                  #####
     #################################################################################
+
     if 'invert_img' not in excluded_steps:
+        print("Inverting images...")
         def invert_img_worker(file_id_list, corpus_dir):
             corpus_dir = '\ '.join(corpus_dir.strip().split(" "))
             for file_id in file_id_list:
@@ -619,6 +633,103 @@ if __name__ == '__main__':
     else:
         print("Skipping invert_img...")
 
+    #################################################################################
+    #####                     6. UPDATE INDEX                                   #####
+    #################################################################################
+
+    if "index" not in excluded_steps:
+        print("Updating index...")
+
+        os.environ['INDEX_PATH'] = INDEX_DIR
+        INDEX_DIR_CUR = INDEX_DIR
+        if os.path.isdir(INDEX_DIR):
+            INDEX_DIR_CUR = INDEX_DIR + "_new"
+
+        os.makedirs(os.path.join(INDEX_DIR_CUR, "db"), exist_ok=True)
+        # assume there is no space in CAS2_DIR and INDEX_DIR_CUR
+        os.system("create_single_index.sh -m 100000 {} {}".format(CAS2_DIR, INDEX_DIR_CUR))
+
+        os.chdir(INDEX_DIR_CUR)
+        num_subidx_step = int(math.ceil(PAPERS_PER_SUBINDEX / 100000))
+        first_idx_in_master = 0
+        final_counter = 0
+        last_idx_in_master = num_subidx_step
+        num_subidx = len([f for f in os.listdir(INDEX_DIR_CUR) if 'subindex' in f])
+        found = False
+        while not found:
+            if last_idx_in_master >= num_subidx:
+                found = True
+            for i in range(first_idx_in_master + 1, last_idx_in_master):
+                os.system("indexmerger subindex_{} subindex_{} no".format(first_idx_in_master, i))
+                os.system("rm -rf subindex_{}".format(i))
+            if first_idx_in_master != final_counter:
+                os.system("mv subindex_{} subindex_{}".format(first_idx_in_master, final_counter))
+            first_idx_in_master = first_idx_in_master + num_subidx_step
+            last_idx_in_master = last_idx_in_master + num_subidx_step
+            final_counter += 1
+        os.system("saveidstodb -i {}".format(INDEX_DIR_CUR))
+        for root, dirs, files in os.walk(os.path.join(INDEX_DIR_CUR, "db")):
+            for d in dirs:
+                os.chmod(os.path.join(root, d), 777)
+            for f in files:
+                os.chmod(os.path.join(root, f), 777)
+        if os.path.isdir("/data2/textpresso/db.bk"):
+            os.system("rm -rf /data2/textpresso/db.bk")
+            shutil.move("/data2/textpresso/db", "/data2/textpresso/db.bk")
+        shutil.move(os.path.join(INDEX_DIR_CUR, "db"), "/data2/textpresso/db")
+        os.system("ln -s {} {}".format("/data2/textpresso/db",
+                                       os.path.join(INDEX_DIR_CUR, "db")))
+        if os.path.isdir("{}_new".format(INDEX_DIR)):
+            os.system("rm -rf {}.bk".format(INDEX_DIR))
+            shutil.move(INDEX_DIR, "{}.bk".format(INDEX_DIR))
+            shutil.move(INDEX_DIR_CUR, INDEX_DIR)
+
+    else:
+        print("Skipping index...")
+
+    #################################################################################
+    #####                  7. REMOVE INVALIDATED PAPERS                         #####
+    #################################################################################
+
+    if "remove_invalidated" not in EXCLUDE_STEPS:
+        print("Removing invalid papers deleted from server...")
+        # temp file for listing files to be deleted
+        tpcas2_file_dict = dict()
+        for corpus in [d for d in os.listdir(CAS2_DIR)
+                       if os.path.isdir(os.path.join(CAS2_DIR, d))]:
+            if corpus not in tpcas2_file_dict:
+                tpcas2_file_dict[corpus] = list()
+            for file_id in [d for d in os.listdir(os.path.join(CAS2_DIR, corpus))
+                            if os.path.isfile(os.path.join(CAS2_DIR, corpus, d, d + '.tpcas.gz'))]:
+                tpcas2_file_dict[corpus].append(file_id)
+
+        tempfile_fp = tempfile.TemporaryFile()
+        removedpdf_list_fp.seek(0)
+        line = removedpdf_list_fp.readline()
+        while line:
+            line = line.strip()
+            corpus, file_id = line.split("/")[5], line.split("/")[6]
+            if file_id in tpcas2_file_dict[corpus]:
+                tempfile_fp.write(os.path.join(corpus, file_id, file_id + '.tpcas.gz' + '\n'))
+            line = removedpdf_list_fp.readline()
+        os.system("cas2index -i {} -o {} -r {}".format(CAS2_DIR, INDEX_DIR, tempfile_fp.name))
+
+        removedpdf_list_fp.seek(0)
+        line = removedpdf_list_fp.readline()
+        while line:
+            line = line.strip()
+            file_dir = '/'.join(line.split('/')[5:7])
+            os.system("rm -rf {}".format(os.path.join(CAS1_DIR, file_dir)))
+            os.system("rm -rf {}".format(os.path.join(CAS2_DIR, file_dir)))
+            line = removedpdf_list_fp.readline()
+
+        tempfile_fp.close()
+    else:
+        print("Skipping remove_invalidated...")
+
+    if "remove_temp" not in EXCLUDE_STEPS:
+        os.system("rm -rf {}".format(os.path.join(TMP_DIR, "tpcas-1")))
+        os.system("rm -rf {}".format(os.path.join(TMP_DIR, "tpcas-2")))
 
     logfile_fp.close()
     newpdf_list_fp.close()
