@@ -6,6 +6,8 @@ import math
 import multiprocessing
 import subprocess
 import gzip
+import re
+import time
 
 from getpdfs.getpdfs import download_pdfs
 from getbib.download_abstract import get_abstracts
@@ -114,7 +116,7 @@ def gzip_tpcas_worker(file_list, path, type):
         else:  # if type == 2
             tpcas_file = os.path.join(path, file)
         if tpcas_file.endswith('.tpcas') and os.path.isfile(tpcas_file):
-            subprocess.check_call(['gzip', tpcas_file])
+            subprocess.check_call(['gzip', '-f', tpcas_file])
 
 
 def gunzip_worker(zipped_file_list, path):
@@ -241,12 +243,11 @@ if __name__ == '__main__':
     os.environ['LD_LIBRARY_PATH'] = "{}:/usr/local/lib".format(os.environ['LD_LIBRARY_PATH'])
     os.environ['PATH'] = "{}:/usr/local/bin".format(os.environ['PATH'])
 
-    logfile_fp = tempfile.TemporaryFile()
-    newpdf_list_fp = tempfile.TemporaryFile()
-    removedpdf_list_fp = tempfile.TemporaryFile()
-    newxml_list_fp = tempfile.TemporaryFile()
-    newxml_local_list_fp = tempfile.TemporaryFile()
-    diffxml_list_fp = tempfile.TemporaryFile()
+    logfile_fp = tempfile.NamedTemporaryFile()
+    removedpdf_list_fp = tempfile.NamedTemporaryFile()
+    newxml_list_fp = tempfile.NamedTemporaryFile()
+    newxml_local_list_fp = tempfile.NamedTemporaryFile()
+    diffxml_list_fp = tempfile.NamedTemporaryFile()
 
     excluded_steps = EXCLUDE_STEPS.split(',')
 
@@ -254,32 +255,134 @@ if __name__ == '__main__':
     #####                      1. DOWNLOAD PAPERS                               #####
     #################################################################################
 
+    # 1.1 Download XML files from PMCOA
     if 'download_xml' not in excluded_steps:
-       pass
+        print("Downloading xml papers ...")
+
+        # 1.1.1 create directory for unclassified xml files
+        os.makedirs(XML_DIR, exist_ok=True)
+        os.makedirs(FTP_MNTPNT, exist_ok=True)
+
+        # 1.1.2 mount pmcoa ftp locally through curl
+        os.system("curlftpfs ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/ {}".format(FTP_MNTPNT))
+
+        # 1.1.3 retrieve a list of files on pmcoa
+        # write "Y-m-d H:M:S.f filename" to newxml_list temp file
+        # unsure of the ordering difference between Python and shell
+        # for dir in [d for d in os.listdir(FTP_MNTPNT)
+        #             if os.path.isdir(os.path.join(FTP_MNTPNT, d))]:
+        #     for subdir in [sd for sd in os.listdir(os.path.join(FTP_MNTPNT, dir))
+        #                    if os.path.isdir(os.path.join(FTP_MNTPNT, dir, sd))]:
+        #         for xml_file in [f for f in os.listdir(os.path.join(FTP_MNTPNT, dir, subdir))
+        #                          if os.path.isfile(os.path.join(FTP_MNTPNT, dir, subdir, f))]:
+        #             mtime = os.path.getmtime(os.path.join(FTP_MNTPNT, dir, subdir, xml_file))
+        #             isotime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
+        #             xml_filepath = os.path.join(FTP_MNTPNT, dir, subdir, xml_file)
+        #             newxml_list_fp.write("{} {}\n".format(isotime, xml_filepath))
+
+        command = ("for dir in {}/*; do for subdir in ${{dir}}/*; "
+                   "do ls -d -l --time-style=\"full-iso\" ${{subdir}}/* | "
+                   "awk '{{print $6, $7, $9}}' >> {}; done; done").format(FTP_MNTPNT, newxml_list_fp.name)
+        os.system(command)
+        os.system("umount {}".format(FTP_MNTPNT))
+
+        # 1.1.4 1.1.4 calculate diff between existing files and files on PMCOA and download the new ones.
+        # If there are no pre-existing files, download the full repository
+        if os.path.isfile(os.path.join(XML_DIR, "current_filelist.txt")):
+            # delete previous versions
+            command = ("diff {} {}/current_filelist.txt | grep \"^<\" | "
+                       "awk '{{print $4}}' | awk -F\"/\" '{{print $NF}}' | sed 's/.tar.gz//g' | "
+                       "xargs -I {{}} rm -rf \"{}/{{}}\"").format(newxml_list_fp.name, XML_DIR, XML_DIR)
+            os.system(command)
+            # download diff files and update diffxml_list file
+            command = ("diff {} {}/current_filelist.txt | grep \"^<\" | "
+                       "awk '{{print $4}}' | awk -F\"/\" '{{print $(NF-2)\"/\"$(NF-1)\"/\"$NF}}' | "
+                       "xargs -n 1 -P {} -I {{}} sh -c "
+                       "'wget -qO- \"ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{{}}\" | tar xfz - "
+                       "--exclude=\"*.pdf\" --exclude=\"*.PDF\" --exclude=\"*.mp4\" --exclude=\"*.webm\" "
+                       "--exclude=\"*.flv\" --exclude=\"*.avi\" --exclude=\"*.zip\" --exclude=\"*.mov\" "
+                       "--exclude=\"*.csv\" --exclude=\"*.xls*\" --exclude=\"*.doc*\" --exclude=\"*.ppt*\" "
+                       "--exclude=\"*.rar\" --exclude=\"*.txt\" --exclude=\"*.TXT\" --exclude=\"*.wmv\" "
+                       "--exclude=\"*.DOC*\" -C '\"${XML_DIR}\"").format(newxml_list_fp.name, XML_DIR, N_PROC)
+            os.system(command)
+            command = ("diff {} {}/current_filelist.txt | grep \"^<\" | "
+                       "sed 's/< //g' > {}").format(newxml_list_fp.name, XML_DIR, diffxml_list_fp.name)
+            os.system(command)
+
+        else:
+            # download all files
+            command = ("awk '{print $3}' {} | awk -F\"/\" '{print $(NF-2)\"/\"$(NF-1)\"/\"$NF}' | "
+                       "xargs -n 1 -P {} sh -c 'wget -q0- \"ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{{}}\" | "
+                       "tar xfz - --exclude=\"*.pdf\" --exclude=\"*.PDF\" --exclude=\"*.mp4\" --exclude=\"*.webm\" "
+                       "--exclude=\"*.flv\" --exclude=\"*.avi\" --exclude=\"*.zip\" --exclude=\"*.mov\" "
+                       "--exclude=\"*.csv\" --exclude=\"*.xls*\" --exclude=\"*.doc*\" --exclude=\"*.ppt*\" "
+                       "--exclude=\"*.rar\" --exclude=\"*.txt\" --exclude=\"*.TXT\" --exclude=\"*.wmv\" "
+                       "--exclude=\"*.DOC*\" -C '\"{}\""
+                       ).format(newxml_list_fp.name, N_PROC, XML_DIR)
+            os.system(command)
+            # copy newxml_list to diffxml_list
+            newxml_list_fp.seek(0, 0)
+            line = newxml_list_fp.readline()
+            while line:
+                diffxml_list_fp.write(line)
+                line = newxml_list_fp.readline()
+
+        # remove empty files from diff list
+        temp_diff_fp = tempfile.NamedTemporaryFile()
+        command = ("awk '{{print $3}}' {} | awk -F\"/\" '{{print $NF}}' | sed 's/.tar.gz//g' | "
+                   "xargs -I {{}} bash -c 'if [[ -d \"$0/{{}}\" ]]; then echo \"{{}}\"; fi' \"{}\" "
+                   "> {}").format(diffxml_list_fp.name, XML_DIR, temp_diff_fp.name)
+        os.system(command)
+        diffxml_list_fp.close()
+        diffxml_list_fp = tempfile.NamedTemporaryFile()
+        temp_diff_fp.seek(0, 0)
+        line = temp_diff_fp.readline()
+        while line:
+            diffxml_list_fp.write(line)
+            line = temp_diff_fp.readline()
+        temp_diff_fp.close()
+
+        # save the current list
+        with open(os.path.join(XML_DIR, "current_filelist.txt"), 'w') as fpout:
+            newxml_list_fp.seek(0, 0)
+            line = newxml_list_fp.readline()
+            while line:
+                fpout.write(line)
+                line = newxml_list_fp.readline()
+
+        # 1.1.5 save new xml local file list
+        diffxml_list_fp.seek(0, 0)
+        line = diffxml_list_fp.readline()
+        while line:
+            line = line.strip()
+            newxml_local_list_fp.write(os.path.join(XML_DIR, line) + '\n')
+            line = diffxml_list_fp.readline()
+
+        # 1.1.6 compress nxml and put images in a separate directory
+        command = ("cat {} | xargs -I {{}} -n1 -P {} sh -c 'gzip \"{{}}\"/*.nxml; "
+                   "mkdir \"{{}}\"/images; ls -d \"{{}}\"/* | grep -v .nxml | grep -v \"{{}}\"/images | "
+                   "xargs -I [] mv [] \"{{}}\"/images'").format(newxml_local_list_fp.name, N_PROC)
+        os.system(command)
     else:
         print("skipping download_xml")
 
+    # 1.2 Download PDF files from tazendra
     if 'download_pdf' not in excluded_steps:
         print("Downloading pdf papers")
-        if not os.path.isdir(PDF_DIR):
-            os.mkdir(PDF_DIR)
+        os.makedirs(PDF_DIR, exist_ok=True)
         download_pdfs(False, logfile_fp.name, "INFO", PDF_DIR)
 
         # save the list of files to remove
-        logfile_fp.seek(0)
-        removedpdf_list_fp.seek(0)
+        logfile_fp.seek(0, 0)
+        removedpdf_list_fp.seek(0, 0)
         remove_pattern = 'Removing (deleted|invalid) paper (.*)'
         line = logfile_fp.readline()
         while line:
-            line = line.strip()
+            line = line.decode('utf-8').strip()
             match = re.search(remove_pattern, line)
             if match:
                 removedpdf_list_fp.write(match.gropu(2))
             line = logfile_fp.readline()
-
-        # logging into newpdf_list and removedpdf_list does not seem necessary
-        # grep - oP "Downloading paper: .* to \K.*\.pdf" ${logfile} > ${newpdf_list}
-        # grep - oP "Removing .* paper \K.*" ${logfile} > ${removedpdf_list}
     else:
         print("skipping download_pdf")
 
@@ -306,8 +409,7 @@ if __name__ == '__main__':
 
         # obtain all the folder names in PDF_DIR then create tpcas1 folders for every corpus
         # folders correspond to corpus
-        if not os.path.isdir(CAS1_DIR):
-            os.mkdir(CAS1_DIR)
+        os.makedirs(CAS1_DIR, exist_ok=True)
 
         for folder in [d for d in os.listdir(PDF_DIR) if os.path.isdir(os.path.join(PDF_DIR, d))]:
             if not os.path.isdir(os.path.join(CAS1_DIR, folder)):
@@ -320,7 +422,7 @@ if __name__ == '__main__':
 
         # create directories for each corpus in TMP_DIR
         for folder in [d for d in os.listdir(CAS1_DIR) if os.path.isdir(os.path.join(CAS1_DIR, d))]:
-            os.makedirs(os.path.join(TMP_DIR, 'tpcas-1', folder))
+            os.makedirs(os.path.join(TMP_DIR, 'tpcas-1', folder), exist_ok=True)
 
         # copy .tpcas.gz files to TMP_DIR and keep track of missing files
         missing_files_dict = dict()  # {corpus: list of ids of missing .tpcas files}
@@ -343,8 +445,7 @@ if __name__ == '__main__':
             print("{}: {}".format(corpus, len(missing_files_dict[corpus])))
 
         # convert pdf files to txt files
-        if not os.path.isdir(TXT_DIR):
-            os.mkdir(TXT_DIR)
+        os.makedirs(TXT_DIR, exist_ok=True)
         for corpus in missing_files_dict:
             if len(missing_files_dict[corpus]) == 0:
                 continue
@@ -448,8 +549,7 @@ if __name__ == '__main__':
         # create directory structure of tmp/tpcas-2 if it does not exist
         os.chdir(CAS1_DIR)
         for folder in [d for d in os.listdir(CAS1_DIR) if os.path.isdir(os.path.join(CAS1_DIR, d))]:
-            if not os.path.isdir(os.path.join(TMP_DIR, 'tpcas-2', folder)):
-                os.makedirs(os.path.join(TMP_DIR, 'tpcas-2', folder))
+            os.makedirs(os.path.join(TMP_DIR, 'tpcas-2', folder), exist_ok=True)
 
         # decompress all cas files in tmp/tpcas-1 before running UIMA analysis
         for corpus in [d for d in os.listdir(os.path.join(TMP_DIR, 'tpcas-1'))
@@ -493,9 +593,9 @@ if __name__ == '__main__':
         else:
             n_proc = N_PROC
 
-        # generate_tpcas2(corpus_list, len(corpus_list), os.path.join(TMP_DIR, "tpcas-1"),
-        #                 os.path.join(TMP_DIR, "tpcas-2"))
-        # compress_tpcas(os.path.join(TMP_DIR, "tpcas-2"), N_PROC, 2)
+        generate_tpcas2(corpus_list, len(corpus_list), os.path.join(TMP_DIR, "tpcas-1"),
+                        os.path.join(TMP_DIR, "tpcas-2"))
+        compress_tpcas(os.path.join(TMP_DIR, "tpcas-2"), N_PROC, 2)
 
         # 3.3 Setup TPCAS-2 DIRS
 
@@ -704,7 +804,7 @@ if __name__ == '__main__':
                 tpcas2_file_dict[corpus].append(file_id)
 
         tempfile_fp = tempfile.TemporaryFile()
-        removedpdf_list_fp.seek(0)
+        removedpdf_list_fp.seek(0, 0)
         line = removedpdf_list_fp.readline()
         while line:
             line = line.strip()
@@ -714,7 +814,7 @@ if __name__ == '__main__':
             line = removedpdf_list_fp.readline()
         os.system("cas2index -i {} -o {} -r {}".format(CAS2_DIR, INDEX_DIR, tempfile_fp.name))
 
-        removedpdf_list_fp.seek(0)
+        removedpdf_list_fp.seek(0, 0)
         line = removedpdf_list_fp.readline()
         while line:
             line = line.strip()
@@ -728,11 +828,11 @@ if __name__ == '__main__':
         print("Skipping remove_invalidated...")
 
     if "remove_temp" not in EXCLUDE_STEPS:
-        os.system("rm -rf {}".format(os.path.join(TMP_DIR, "tpcas-1")))
-        os.system("rm -rf {}".format(os.path.join(TMP_DIR, "tpcas-2")))
+        os.system("rm -r {}".format(os.path.join(TMP_DIR, "tpcas-1")))
+        os.system("rm -r {}".format(os.path.join(TMP_DIR, "tpcas-2")))
+        os.system("rm -r {}".format(TMP_DIR))
 
     logfile_fp.close()
-    newpdf_list_fp.close()
     removedpdf_list_fp.close()
     newxml_list_fp.close()
     newxml_local_list_fp.close()
