@@ -94,12 +94,24 @@ def cas1_worker(tmp_file_idx, corpus, input_dir, file_format):
     os.system(command)
 
 
+def cas1_xml_worker(tmp_file_idx, input_dir):
+    dirlist_file = "/tmp/tmplist_{}.txt".format(tmp_file_idx)
+    command = 'articles2cas -i {} -l {} -t 2 -o PMCOA -p'.format(input_dir, dirlist_file)
+    os.system(command)
+
+
 def cas2_worker(corpus_list, input_path, output_path):
     for corpus in corpus_list:
         corpus = '\ '.join(corpus.strip().split(" "))
-        command = "runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi {} {}".format(os.path.join(input_path, corpus),
-                                                                                                        os.path.join(output_path, corpus))
+        command = ("runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "
+                   "{} {}").format(os.path.join(input_path, corpus), os.path.join(output_path, corpus))
         os.system(command)
+
+
+def cas2_xml_worker(subdir, input_path, output_path):
+    command = ("runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "
+               "{} {}").format(os.path.join(input_path, subdir), output_path)
+    os.system(command)
 
 
 def gzip_tpcas_worker(file_list, path, type):
@@ -179,6 +191,39 @@ def generate_tpcas1(input_dir, file_format, n_proc):
             os.remove("/tmp/tmplist_{}.txt".format(proc_idx))
 
 
+def generate_xml_tpcas1(input_dir, file_list_fp, n_proc):
+    print("Using {} processes".format(n_proc))
+    os.chdir(CAS1_DIR)
+    file_list = list()
+    file_list_fp.seek(0, 0)
+    line = file_list_fp.readline()
+    while line:
+        file_list.append(line.strip())
+        line = file_list_fp.readline()
+    n_xml_per_process = [math.floor(len(file_list) / n_proc)] * n_proc
+    for i in range(len(file_list) % n_proc):
+        n_xml_per_process[i] += 1
+
+    curr_idx = 0
+    cas1_mp_args = list()
+    for proc_idx in range(n_proc):
+        with open('/tmp/tmplist_{}.txt'.format(proc_idx), 'w') as fpout:
+            for file_id in file_list[curr_idx:curr_idx + n_xml_per_process[proc_idx]]:
+                fpout.write(file_id.split('/')[-1] + '\n')
+            cas1_mp_args.append((proc_idx, input_dir))
+            curr_idx += n_xml_per_process[proc_idx]
+
+    # execute cas1_xml_worker in parallel
+    pool = multiprocessing.Pool(processes=n_proc)
+    pool.starmap(cas1_xml_worker, cas1_mp_args)
+    pool.close()
+    pool.join()
+
+    print("xml cas1 complete")
+    for proc_idx in range(n_proc):
+        os.remove("/tmp/tmplist_{}.txt".format(proc_idx))
+
+
 def generate_tpcas2(corpus_list, n_proc, input_dir, output_dir):
     n_corpus_per_process = [math.floor(len(corpus_list) / n_proc)] * n_proc
     for i in range(len(corpus_list) % n_proc):
@@ -196,16 +241,30 @@ def generate_tpcas2(corpus_list, n_proc, input_dir, output_dir):
     pool.join()
 
 
-def compress_tpcas(input_dir, n_proc, type):
+def generate_xml_tpcas2(n_proc, input_dir, output_dir):
+    cas2_mp_args = list()
+    for subdir in [d for d in os.listdir(input_dir)
+                   if os.path.isdir(os.path.join(input_dir, d))]:
+        cas2_mp_args.append((subdir, input_dir, output_dir))
+    pool = multiprocessing.Pool(processes=n_proc)
+    pool.starmap(cas2_xml_worker, cas2_mp_args)
+    pool.close()
+    poo.join()
+
+
+def compress_tpcas(input_dir, n_proc, type, is_xml=False):
     """
     Compresses .tpcas files in input_dir in parallel using n_proc cpus
     :param input_dir: for type 1 - directory of the corpus
                       for type 2 - directory where .tpcas files are located at
     :param n_proc: number of processes to use
     :param type: 1 if cas1, 2 if cas2
+    :param is_xml: True if compressing xml tpcas, False if not
     """
     assert type == 1 or type == 2
     for corpus in [d for d in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, d))]:
+        if is_xml and corpus != 'xml':
+            continue
         tpcas_file_list = os.listdir(os.path.join(input_dir, corpus))
         # obtain the number of files assigned to each process
         n_tpcas_per_process = [math.floor(len(tpcas_file_list) / n_proc)] * n_proc
@@ -484,52 +543,50 @@ if __name__ == '__main__':
                 if os.path.isfile(cas_file):
                     shutil.copy(cas_file, os.path.join(TMP_DIR, 'tpcas-1', corpus))
 
-        # 2.2 XML FILES
+        # 2.2 Generate TPCAS-1 from XML FILES
 
         # remove old versions
-        # awk -F"/" '{print $NF}' ${newxml_local_list} | xargs -I {} rm -rf "${CAS1_DIR}/PMCOA/{}"
-        #
-        # mkdir -p ${CAS1_DIR}/PMCOA
-        # cd ${CAS1_DIR}
-        # num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(wc -l ${newxml_local_list} | awk '{print $1}') / ${N_PROC}))")
-        # n_lines_to_tail=$(wc -l ${newxml_local_list} | awk '{print $1}')
-        # for ((i=1; i<=${N_PROC}; i++))
-        # do
-        #   awk 'BEGIN{FS="/"}{print $NF}' ${newxml_local_list} | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
-        #   articles2cas -i "${XML_DIR}" -l /tmp/tmplist_$i.txt -t 2 -o PMCOA -p > logfile_$i.log &
-        #   n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
-        # done
-        # wait
-        # rm /tmp/tmplist_*.txt
-        # rm logfile_*.log
-        #
-        # # 2.3 add images to tpcas directory and gzip
-        #
-        # # 2.3.1 xml
-        # cat ${newxml_local_list} | awk 'BEGIN{FS="/"}{print $NF}' | xargs -n1 -P ${N_PROC} -I {} sh -c 'dirname=$(echo "{}"); rm -rf "$0/PMCOA/${dirname}/images";  ln -fs "$1/${dirname}/images" "$0/PMCOA/${dirname}/images"; find -L "$0/PMCOA/${dirname}" -name "*.tpcas" | xargs -I [] gzip -f "[]"' ${CAS1_DIR} ${XML_DIR}
-        # # 2.3.2 pdf
-        # cat ${newpdf_list} | xargs -n1 -P ${N_PROC} -I {} echo "{}" | awk 'BEGIN{FS="/"}{print $(NF-2)"/"$(NF-1)"/"$NF}' | sed 's/\.pdf/\.tpcas/g' | xargs -I [] gzip -f "[]"
+        newxml_local_list_fp.seek(0, 0)
+        line = newxml_local_list_fp.readline()
+        while line:
+            line = line.strip()
+            file_id = line.split('/')[-1]
+            os.system("rm -rf {}/PMCOA/{}".format(CAS1_DIR, file_id))
+            line = newxml_local_list_fp.readline()
 
-        # 3.1 COPY FILES TO TMP DIR
-        # 3.1.1 xml - subdirs are processed in parallel
-        # mkdir - p ${TMP_DIR}/tpcas-1/xml
-        # i = 1
-        # subdir_idx = 1
-        # num_papers_to_process_together =$(python3 - c "from math import ceil; print(ceil($(wc -l ${newxml_local_list} | awk '{print $1}') / ${N_PROC}))")
-        # mkdir - p ${TMP_DIR} / tpcas - 1 / xml / subdir_1
-        # cat ${newxml_local_list} | while read line
-        # do
-        #     if [["$i" - gt "$num_papers_to_process_together"]]
-        #     then
-        #       i = 0
-        #       subdir_idx =$((subdir_idx + 1))
-        #       mkdir - p ${TMP_DIR}/tpcas-1/xml/subdir_${subdir_idx}
-        #     fi
-        #     dirname =$(echo ${line} | awk 'BEGIN{FS="/"}{print $NF}')
-        #     find - L "${CAS1_DIR}/PMCOA/${dirname}" - name *.tpcas.gz | xargs - I {} cp "{}" "${TMP_DIR}/tpcas-1/xml/subdir_${subdir_idx}/${dirname}.tpcas.gz"
-        #     i =$((i + 1))
-        # done
+        os.makedirs(os.path.join(CAS1_DIR, 'PMCOA'), exist_ok=True)
+        generate_xml_tpcas1(XML_DIR, newxml_local_list_fp, N_PROC)
+        # add images to tpcas directory and gzip
+        # TODO: translate into Python and add multiprocessing
+        command = ("cat {} | awk 'BEGIN{{FS=\"/\"}}{{print $NF}}' | "
+                   "xargs -n1 -P {} -I {{}} sh -c 'dirname=$(echo \"{{}}\"); "
+                   "rm -rf \"$0/PMCOA/${dirname}/images\";  ln -fs \"$1/${dirname}/images\" "
+                   "\"$0/PMCOA/${dirname}/images\"; find -L \"$0/PMCOA/${dirname}\" -name \"*.tpcas\" | "
+                   "xargs -I [] gzip -f \"[]\"' {} {}").format(newxml_local_list_fp.name, N_PROC, CAS1_DIR, XML_DIR)
+        os.system(command)
 
+        # 2.2.1 copy files to TMP_DIR
+        os.makedirs(os.path.join(TMP_DIR, 'tpcas-1', 'xml'), exist_ok=True)
+
+        # TODO: test parallel vs nonparallel for copying files
+        dir_list = list()
+        newxml_local_list_fp.seek(0, 0)
+        line = newxml_local_list_fp.readline()
+        while line:
+            dir_list.append(line.strip().split("/")[-1])
+            line = newxml_local_list_fp.readline()
+
+        num_papers_to_process_together = int(math.ceil(len(dir_list) / N_PROC))
+        i, subdir_idx = 1, 1
+        os.makedirs(os.path.join(TMP_DIR, 'tpcas-1', 'xml', 'subdir_1'), exist_ok=True)
+        for dirname in dir_list:
+            if i > num_papers_to_process_together:
+                i = 0
+                subdir_idx += 1
+                os.makedirs(os.path.join(TMP_DIR, 'tpcas-1', 'xml', 'subdir_{}'.format(subdir_idx)), exist_ok=True)
+            shutil.copy(os.path.join(CAS1_DIR, 'PMCOA', dirname, dirname + ".tpcas.gz"),
+                        os.path.join(TMP_DIR, "tpcas-1", "xml", "subdir_{}".format(subdir_idx), dirname + ".tpcas.gz"))
+            i += 1
     else:
         print("skipping cas1...")
 
@@ -550,10 +607,13 @@ if __name__ == '__main__':
         os.chdir(CAS1_DIR)
         for folder in [d for d in os.listdir(CAS1_DIR) if os.path.isdir(os.path.join(CAS1_DIR, d))]:
             os.makedirs(os.path.join(TMP_DIR, 'tpcas-2', folder), exist_ok=True)
+        os.makedirs(os.path.join(TMP_DIR, 'tpcas-2', 'xml'), exist_ok=True)
 
-        # decompress all cas files in tmp/tpcas-1 before running UIMA analysis
+        # decompress all pdf cas files in tmp/tpcas-1 before running UIMA analysis
         for corpus in [d for d in os.listdir(os.path.join(TMP_DIR, 'tpcas-1'))
                        if os.path.isdir(os.path.join(TMP_DIR, 'tpcas-1', d))]:
+            if corpus == 'xml':
+                continue
             cas1_zipped_list = [f for f in os.listdir(os.path.join(TMP_DIR, 'tpcas-1', corpus))
                                 if f[-3:] == '.gz']
             gunzip_mp_args = list()
@@ -570,19 +630,22 @@ if __name__ == '__main__':
             pool.starmap(gunzip_worker, gunzip_mp_args)
             pool.close()
             pool.join()
+
+        # decompress all xml cas files in tmp/tpcas-1 before running UIMA analysis
+        gunzip_mp_args = list()
+        for subdir in [d for d in os.listdir(os.path.join(TMP_DIR, 'tpcas-1', 'xml'))
+                       if os.path.isdir(os.path.join(TMP_DIR, 'tpcas-1', 'xml', d))]:
+            gunzip_mp_args.append(([f for f in os.listdir(os.path.join(TMP_DIR, 'tpcas-1', 'xml', subdir))
+                                    if os.path.isfile(os.path.join(TMP_DIR, 'tpcas-1', 'xml', subdir, f))
+                                    and f.endswith('.tpcas.gz')],
+                                   os.path.join(TMP_DIR, 'tpcas-1', xml, subdir)))
+        pool = multiprocessing.Pool(processes=N_PROC)
+        pool.starmap(gunzip_worker, gunzip_mp_args)
+        pool.close()
+        pool.join()
         print("Successfully unzipped .tpcas.gz files")
 
-
         # 3.2 APPLY UIMA ANALYSIS
-
-        # remove old versions
-        # awk - F"/" '{print $NF}' ${newxml_local_list} | xargs - I {} rm - rf "${CAS2_DIR}/PMCOA/{}"
-
-        # for subdir in $(ls ${TMP_DIR} / tpcas-1 / xml)
-        # do
-        # runAECpp / usr / local / uima_descriptors / TpLexiconAnnotatorFromPg.xml - xmi ${TMP_DIR} / tpcas - 1 / xml /${subdir} ${TMP_DIR} / tpcas - 2 / xml &
-        # done
-        # wait
 
         # run UIMA analysis on pdf files
         print("Running UIMA analysis for pdf...")
@@ -597,6 +660,20 @@ if __name__ == '__main__':
                         os.path.join(TMP_DIR, "tpcas-2"))
         compress_tpcas(os.path.join(TMP_DIR, "tpcas-2"), N_PROC, 2)
 
+        # run UIMA analysis on xml files
+        print("Running UIMA analysis for xml...")
+
+        # remove old versions of xml
+        newxml_local_list_fp.seek(0, 0)
+        line = newxml_local_list_fp.readline()
+        while line:
+            os.system("rm -r {}".format(os.path.join(CAS2_DIR, 'PMCOA', line.strip().split('/')[-1])))
+            line = newxml_local_list_fp.readline()
+
+        generate_xml_tpcas2(N_PROC, os.path.join(TMP_DIR, 'tpcas-1', 'xml'),
+                            os.path.join(TMP_DIR, 'tpcas-2', 'xml'))
+        compress_tpcas(os.path.join(TMP_DIR, "tpcas-2"), N_PROC, 2, is_xml=True)
+
         # 3.3 Setup TPCAS-2 DIRS
 
         # create TPCAS-2 directory and its subdirectories
@@ -609,26 +686,7 @@ if __name__ == '__main__':
             if not os.path.isdir(os.path.join(CAS2_DIR, corpus)):
                 os.mkdir(os.path.join(CAS2_DIR, corpus))
 
-        # 3.3.1 xml
-        # cat ${newxml_local_list} | while read line
-        # do
-        # dirname =$(echo ${line} | awk 'BEGIN{FS="/"}{print $NF}')
-        # if [[-d "${CAS1_DIR}/PMCOA/${dirname}"]]
-        #     then
-        # tpcas_file_name =$(ls ${CAS1_DIR} / PMCOA / ${dirname} / *.tpcas.gz | head -n1 | awk 'BEGIN{FS="/"}{print $NF}')
-        # mkdir - p "${CAS2_DIR}/PMCOA/${dirname}"
-        # if [[-e "${CAS2_DIR}/PMCOA/${dirname}/images"]]
-        #     then
-        # rm "${CAS2_DIR}/PMCOA/${dirname}/images"
-        # fi
-        # ln - s
-        # "${CAS1_DIR}/PMCOA/${dirname}/images" "${CAS2_DIR}/PMCOA/${dirname}/images"
-        # cp ${TMP_DIR} / tpcas - 2 / xml /${dirname}.tpcas.gz
-        # "${CAS2_DIR}/PMCOA/${dirname}/${tpcas_file_name}"
-        # fi
-        # done
-
-        # 3.3.2 pdf
+        # 3.3.1 pdf
         for corpus in [d for d in os.listdir(PDF_DIR) if os.path.isdir(os.path.join(PDF_DIR, d))]:
             for file_id in [d for d in os.listdir(os.path.join(CAS1_DIR, corpus))
                             if os.path.isdir(os.path.join(CAS1_DIR, corpus, d))]:
@@ -642,6 +700,22 @@ if __name__ == '__main__':
                     shutil.copy(os.path.join(TMP_DIR, "tpcas-2", corpus, file_id + ".tpcas.gz"),
                                 os.path.join(CAS2_DIR, corpus, file_id, file_id + ".tpcas.gz"))
 
+        # 3.3.2 xml
+        newxml_local_list_fp.seek(0, 0)
+        line = newxml_local_list_fp.readline()
+        while line:
+            dirname = line.strip().split('/')[-1]
+            if os.path.isdir(os.path.join(CAS1_DIR, 'PMCOA', dirname)):
+                tpcas_filename = [f for f in os.listdir(os.path.join(CAS1_DIR, 'PMCOA', dirname))
+                                  if os.path.isfile(f) and f.endswith('.tpcas.gz')][0]
+                os.makedirs(os.path.join(CAS2_DIR, 'PMCOA', dirname), exist_ok=True)
+                if os.path.exists(os.path.join(CAS2_DIR, 'PMCOA', dirname, 'images')):
+                    os.remove(os.path.join(CAS2_DIR, 'PMCOA', dirname, 'images'))
+                os.system("ln -s {} {}".format(os.path.join(CAS1_DIR, 'PMCOA', dirname, 'images'),
+                                               os.path.join(CAS2_DIR, 'PMCOA', dirname, 'images')))
+                shutil.copy(os.path.join(TMP_DIR, 'tpcas-2', 'xml', dirname + '.tpcas.gz'),
+                            os.path.join(CAS2_DIR, 'PMCOA', dirname, tpcas_filename))
+            line = newxml_local_list_fp.readline()
     else:
         print("skipping cas2...")
 
