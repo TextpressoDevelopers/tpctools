@@ -153,6 +153,10 @@ def pdf2txt_worker(input_path, output_path, file_id_list):
             fpout.write(text)
 
 
+def xml_bib_worker(input_file, output_path):
+    os.system("getbib4nxml {} -f {}".format(output_path, input_file))
+
+
 def generate_tpcas1(input_dir, file_format, n_proc):
     """
     Generates tpcas1 files
@@ -753,22 +757,31 @@ if __name__ == '__main__':
         create_bib(os.path.join(CAS2_DIR, "xenbase"), "/home/daniel/xenbase_info")
 
         # 4.2 xml
-        # cas_dir_to_process = "${CAS2_DIR}/PMCOA"
-        # if [[-d "${TMP_DIR}/tpcas-2/xml"]]
-        # then
-        #     cas_dir_to_process = "${TMP_DIR}/tpcas-2/xml"
-        # if [[ $(ls ${cas_dir_to_process} | wc -l) != "0"]]
-        # then
-        # tempdir =$(mktemp - d)
-        # num_papers_to_process_together =$(python3 - c "from math import ceil; print(ceil($(ls "${cas_dir_to_process}" | wc -l) / ${N_PROC}))")
-        # ls "${cas_dir_to_process}" | sed 's/.tpcas.gz//g' | split - l ${num_papers_to_process_together} - ${tempdir} / file_to_process -
-        # for file_list in $(ls ${tempdir})
-        # do
-        #   getbib4nxml "${CAS2_DIR}/PMCOA" - f ${tempdir} /${file_list} &
-        # done
-        # wait
-        # rm - rf ${tempdir}
-        # fi
+        cas_dir_to_process = "${CAS2_DIR}/PMCOA"
+        if os.path.isdir(os.path.join(TMP_DIR, "tpcas-2", "xml")):
+            cas_dir_to_process = os.path.join(TMP_DIR, "tpcas-2", "xml")
+        cas_file_list = os.listdir(cas_dir_to_process)
+        if len(cas_file_list) > 0:
+            # multiprocess gebib4nxml
+            curr_idx = 0
+            xml_bib_args = list()
+            with tempfile.TemporaryDirectory() as tempdir:
+                n_files_per_process = [math.floor(len(cas_file_list) / N_PROC)] * N_PROC
+                for i in range(len(cas_file_list) % N_PROC):
+                    n_files_per_process[i] += 1
+
+                for proc_idx in range(N_PROC):
+                    xml_filelist = open(os.path.join(tempdir, "file_to_process-{}".format(proc_idx)))
+                    for filename in cas_file_list[curr_idx:curr_idx + n_files_per_process[proc_idx]]:
+                        xml_filelist.write(filename.replace('.tpcas.gz', '') + '\n')
+                    xml_filelist.close()
+                    xml_bib_args.append((os.path.join(tempdir, xml_filelist), os.path.join(CAS2_DIR, 'PMCOA')))
+                    curr_idx += n_files_per_process[proc_idx]
+
+                pool = multiprocessing.Pool(processes=N_PROC)
+                pool.starmap(xml_bib_worker, xml_bib_args)
+                pool.close()
+                pool.join()
 
     else:
         print("Skipping bib...")
