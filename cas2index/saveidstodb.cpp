@@ -45,7 +45,7 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Error: " << e.what() << "\n";
         return (EXIT_FAILURE);
     }
-    tpc::index::IndexManager indexManager(inputDir, false, false);
+    tpc::index::IndexManager indexManager(inputDir, "", false, false);
     indexManager.save_all_doc_ids_for_sentences_to_db();
     indexManager.save_all_years_for_documents_to_db();
 }
