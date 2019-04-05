@@ -5,3 +5,4 @@ cmake-build*
 **/nbproject/
 *~
 /tpctl.config
+*.pyc

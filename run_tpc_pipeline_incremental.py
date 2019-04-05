@@ -10,6 +10,7 @@ import re
 import time
 
 from getpdfs.getpdfs import download_pdfs
+from getxmls.getxmls import get_newxml_list, download_xmls
 from getbib.download_abstract import get_abstracts
 from getbib.make_bib import create_bib
 import pdf2text
@@ -25,7 +26,8 @@ default_config = {
     "FTP_MNTPNT": "/mnt/pmc_ftp",
     "INDEX_DIR": "/data/textpresso/luceneindex",
     "N_PROC": 1,
-    "EXCLUDE_STEPS": ""
+    "EXCLUDE_STEPS": "",
+    "TEST": False,
 }
 
 PAPERS_PER_SUBINDEX = 1000000
@@ -55,6 +57,8 @@ def set_argument_parser(config):
                         help="do not execute the steps specified by a comma separated list of step names. "
                              "Step names are: download_pdf,download_xml,cas1,cas2,bib,index,"
                              "invert_img,remove_invalidated,remove_temp.")
+    parser.add_argument("-test", "--test", action='store_true', default=False,
+                        help="if True, run in test mode")
     args = parser.parse_args()
     if args.pdf_dir:
         config["PDF_DIR"] = args.pdf_dir
@@ -76,6 +80,8 @@ def set_argument_parser(config):
         config["N_PROC"] = int(args.num_proc)
     if args.exclude_step:
         config["EXCLUDE_STEPS"] = args.exclude_step
+    if args.test:
+        config["TEST"] = args.test
 
 
 def cas1_worker(tmp_file_idx, corpus, input_dir, file_format):
@@ -302,15 +308,29 @@ if __name__ == '__main__':
     INDEX_DIR = default_config["INDEX_DIR"]
     N_PROC = default_config["N_PROC"]
     EXCLUDE_STEPS = default_config["EXCLUDE_STEPS"]
+    TEST_MODE = default_config["TEST"]
 
-    os.environ['LD_LIBRARY_PATH'] = "{}:/usr/local/lib".format(os.environ['LD_LIBRARY_PATH'])
+    if 'LD_LIBRARY_PATH' in os.environ:
+        os.environ['LD_LIBRARY_PATH'] = "{}:/usr/local/lib".format(os.environ['LD_LIBRARY_PATH'])
+    else:
+        os.environ['LD_LIBRARY_PATH'] = "/usr/local/lib"
     os.environ['PATH'] = "{}:/usr/local/bin".format(os.environ['PATH'])
 
     logfile_fp = tempfile.NamedTemporaryFile()
     removedpdf_list_fp = tempfile.NamedTemporaryFile()
-    newxml_list_fp = tempfile.NamedTemporaryFile()
-    newxml_local_list_fp = tempfile.NamedTemporaryFile()
-    diffxml_list_fp = tempfile.NamedTemporaryFile()
+
+    # for testing use actual files not temporary files
+    if TEST_MODE:
+        print("running in testing mode")
+        # newxml_list_fp = open("/home/daniel/newxml_list.txt")
+        newxml_list_file = "/home/daniel/newxml_list.txt"
+        newxml_local_list_fp = open("/home/daniel/newxml_local_list.txt")
+        diffxml_list_fp = open("/home/daniel/diffxml_list.txt")
+    else:
+        # newxml_list_fp = tempfile.NamedTemporaryFile()
+        newxml_list_file = os.path.join(XML_DIR, "newxml_list.txt")
+        newxml_local_list_fp = tempfile.NamedTemporaryFile()
+        diffxml_list_fp = tempfile.NamedTemporaryFile()
 
     excluded_steps = EXCLUDE_STEPS.split(',')
 
@@ -326,31 +346,11 @@ if __name__ == '__main__':
         os.makedirs(XML_DIR, exist_ok=True)
         os.makedirs(FTP_MNTPNT, exist_ok=True)
 
-        # 1.1.2 mount pmcoa ftp locally through curl
-        os.system("curlftpfs ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/ {}".format(FTP_MNTPNT))
+        # get_newxml_list(FTP_MNTPNT, newxml_list_file)
 
-        # 1.1.3 retrieve a list of files on pmcoa
-        # write "Y-m-d H:M:S.f filename" to newxml_list temp file
-        # unsure of the ordering difference between Python and shell
-        # for dir in [d for d in os.listdir(FTP_MNTPNT)
-        #             if os.path.isdir(os.path.join(FTP_MNTPNT, d))]:
-        #     for subdir in [sd for sd in os.listdir(os.path.join(FTP_MNTPNT, dir))
-        #                    if os.path.isdir(os.path.join(FTP_MNTPNT, dir, sd))]:
-        #         for xml_file in [f for f in os.listdir(os.path.join(FTP_MNTPNT, dir, subdir))
-        #                          if os.path.isfile(os.path.join(FTP_MNTPNT, dir, subdir, f))]:
-        #             mtime = os.path.getmtime(os.path.join(FTP_MNTPNT, dir, subdir, xml_file))
-        #             isotime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
-        #             xml_filepath = os.path.join(FTP_MNTPNT, dir, subdir, xml_file)
-        #             newxml_list_fp.write("{} {}\n".format(isotime, xml_filepath))
-
-        command = ("for dir in {}/*; do for subdir in ${{dir}}/*; "
-                   "do ls -d -l --time-style=\"full-iso\" ${{subdir}}/* | "
-                   "awk '{{print $6, $7, $9}}' >> {}; done; done").format(FTP_MNTPNT, newxml_list_fp.name)
-        os.system(command)
-        os.system("umount {}".format(FTP_MNTPNT))
-
-        # 1.1.4 1.1.4 calculate diff between existing files and files on PMCOA and download the new ones.
+        # 1.1.4 calculate diff between existing files and files on PMCOA and download the new ones.
         # If there are no pre-existing files, download the full repository
+
         if os.path.isfile(os.path.join(XML_DIR, "current_filelist.txt")):
             # delete previous versions
             command = ("diff {} {}/current_filelist.txt | grep \"^<\" | "
@@ -373,23 +373,16 @@ if __name__ == '__main__':
             os.system(command)
 
         else:
-            # download all files
-            command = ("awk '{print $3}' {} | awk -F\"/\" '{print $(NF-2)\"/\"$(NF-1)\"/\"$NF}' | "
-                       "xargs -n 1 -P {} sh -c 'wget -q0- \"ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{{}}\" | "
-                       "tar xfz - --exclude=\"*.pdf\" --exclude=\"*.PDF\" --exclude=\"*.mp4\" --exclude=\"*.webm\" "
-                       "--exclude=\"*.flv\" --exclude=\"*.avi\" --exclude=\"*.zip\" --exclude=\"*.mov\" "
-                       "--exclude=\"*.csv\" --exclude=\"*.xls*\" --exclude=\"*.doc*\" --exclude=\"*.ppt*\" "
-                       "--exclude=\"*.rar\" --exclude=\"*.txt\" --exclude=\"*.TXT\" --exclude=\"*.wmv\" "
-                       "--exclude=\"*.DOC*\" -C '\"{}\""
-                       ).format(newxml_list_fp.name, N_PROC, XML_DIR)
-            os.system(command)
-            # copy newxml_list to diffxml_list
-            newxml_list_fp.seek(0, 0)
-            line = newxml_list_fp.readline()
-            while line:
-                diffxml_list_fp.write(line)
-                line = newxml_list_fp.readline()
+            download_xmls(newxml_list_file, XML_DIR, N_PROC)
 
+            # copy newxml_list to diffxml_list
+            with open(newxml_list_file, 'r') as newxml_list_fp:
+                line = newxml_list_fp.readline()
+                while line:
+                    diffxml_list_fp.write(line)
+                    line = newxml_list_fp.readline
+
+        """
         # remove empty files from diff list
         temp_diff_fp = tempfile.NamedTemporaryFile()
         command = ("awk '{{print $3}}' {} | awk -F\"/\" '{{print $NF}}' | sed 's/.tar.gz//g' | "
@@ -420,12 +413,12 @@ if __name__ == '__main__':
             line = line.strip()
             newxml_local_list_fp.write(os.path.join(XML_DIR, line) + '\n')
             line = diffxml_list_fp.readline()
-
+        """
         # 1.1.6 compress nxml and put images in a separate directory
-        command = ("cat {} | xargs -I {{}} -n1 -P {} sh -c 'gzip \"{{}}\"/*.nxml; "
-                   "mkdir \"{{}}\"/images; ls -d \"{{}}\"/* | grep -v .nxml | grep -v \"{{}}\"/images | "
-                   "xargs -I [] mv [] \"{{}}\"/images'").format(newxml_local_list_fp.name, N_PROC)
-        os.system(command)
+        # command = ("cat {} | xargs -I {{}} -n1 -P {} sh -c 'gzip \"{{}}\"/*.nxml; "
+        #            "mkdir \"{{}}\"/images; ls -d \"{{}}\"/* | grep -v .nxml | grep -v \"{{}}\"/images | "
+        #            "xargs -I [] mv [] \"{{}}\"/images'").format(newxml_local_list_fp.name, N_PROC)
+        # os.system(command)
     else:
         print("skipping download_xml")
 
@@ -836,6 +829,8 @@ if __name__ == '__main__':
         # assume there is no space in CAS2_DIR and INDEX_DIR_CUR
         os.system("create_single_index.sh -m 100000 {} {}".format(CAS2_DIR, INDEX_DIR_CUR))
 
+        # TODO: test with lower papers_per_subindex
+
         os.chdir(INDEX_DIR_CUR)
         num_subidx_step = int(math.ceil(PAPERS_PER_SUBINDEX / 100000))
         first_idx_in_master = 0
@@ -860,23 +855,23 @@ if __name__ == '__main__':
                 os.chmod(os.path.join(root, d), 777)
             for f in files:
                 os.chmod(os.path.join(root, f), 777)
-        if os.path.isdir("/data2/textpresso/db.bk"):
-            os.system("rm -rf /data2/textpresso/db.bk")
-            shutil.move("/data2/textpresso/db", "/data2/textpresso/db.bk")
-        shutil.move(os.path.join(INDEX_DIR_CUR, "db"), "/data2/textpresso/db")
+        os.system("rm -rf /data2/textpresso/db.bk")
+        os.system("mv {} {}".format("/data2/textpresso/db", "/data2/textpresso/db.bk"))
+        os.system("mv {} {}".format(os.path.join(INDEX_DIR_CUR, "db"), "/data2/textpresso/db"))
         os.system("ln -s {} {}".format("/data2/textpresso/db",
                                        os.path.join(INDEX_DIR_CUR, "db")))
         if os.path.isdir("{}_new".format(INDEX_DIR)):
             os.system("rm -rf {}.bk".format(INDEX_DIR))
-            shutil.move(INDEX_DIR, "{}.bk".format(INDEX_DIR))
-            shutil.move(INDEX_DIR_CUR, INDEX_DIR)
-
+            os.system("mv {} {}.bk".format(INDEX_DIR, INDEX_DIR))
+            os.system("mv {} {}".format(INDEX_DIR_CUR, INDEX_DIR))
     else:
         print("Skipping index...")
 
     #################################################################################
     #####                  7. REMOVE INVALIDATED PAPERS                         #####
     #################################################################################
+
+    # TODO: test
 
     if "remove_invalidated" not in EXCLUDE_STEPS:
         print("Removing invalid papers deleted from server...")
@@ -921,6 +916,6 @@ if __name__ == '__main__':
 
     logfile_fp.close()
     removedpdf_list_fp.close()
-    newxml_list_fp.close()
+    # newxml_list_fp.close()
     newxml_local_list_fp.close()
     diffxml_list_fp.close()
