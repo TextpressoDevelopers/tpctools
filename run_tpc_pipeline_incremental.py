@@ -8,6 +8,7 @@ import subprocess
 import gzip
 import re
 import time
+import difflib
 
 from getpdfs.getpdfs import download_pdfs
 from getxmls.getxmls import get_newxml_list, download_xmls
@@ -120,21 +121,26 @@ def cas2_xml_worker(subdir, input_path, output_path):
     os.system(command)
 
 
-def gzip_tpcas_worker(file_list, path, type):
+def gzip_worker(file_list, path, type):
     """
     Worker to be used for compressing .tpcas files
     :param file_list: list of files to compress - file_id for tpcas1, file_id.tpcas for tpcas2
     :param path: path to the corpus of the target files to be compressed
-    :param type: 1 if cas1, 2 if cas2
+    :param type: 1 if cas1, 2 if cas2, 3 if .nxml
     """
-    assert type == 1 or type == 2
+    assert type in {1, 2, 3}
     for file in file_list:
         if type == 1:
-            tpcas_file = os.path.join(path, file, file + '.tpcas')
-        else:  # if type == 2
-            tpcas_file = os.path.join(path, file)
-        if tpcas_file.endswith('.tpcas') and os.path.isfile(tpcas_file):
-            subprocess.check_call(['gzip', '-f', tpcas_file])
+            target_file = os.path.join(path, file, file + '.tpcas')
+        elif type == 2 or type == 3:
+            target_file = os.path.join(path, file)
+
+        if type == 1 or type == 2:  # tpcas
+            if target_file.endswith('.tpcas') and os.path.isfile(target_file):
+                subprocess.check_call(['gzip', '-f', target_file])
+        elif type == 3:  # nxml
+            if target_file.endswith('.nxml') and os.path.isfile(target_file):
+                subprocess.check_call(['gzip', '-f', target_file])
 
 
 def gunzip_worker(zipped_file_list, path):
@@ -289,9 +295,9 @@ def compress_tpcas(input_dir, n_proc, type, is_xml=False):
                                  os.path.join(input_dir, corpus), type))
             curr_idx += n_tpcas_per_process[proc_idx]
 
-        # run gzip_tpcas_worker on multiprocess
+        # run gzip_worker on multiprocess
         pool = multiprocessing.Pool(processes=n_proc)
-        pool.starmap(gzip_tpcas_worker, gzip_mp_args)
+        pool.starmap(gzip_worker, gzip_mp_args)
         pool.close()
         pool.join()
 
@@ -322,10 +328,10 @@ if __name__ == '__main__':
     # for testing use actual files not temporary files
     if TEST_MODE:
         print("running in testing mode")
-        # newxml_list_fp = open("/home/daniel/newxml_list.txt")
-        newxml_list_file = "/home/daniel/newxml_list.txt"
-        newxml_local_list_fp = open("/home/daniel/newxml_local_list.txt")
-        diffxml_list_fp = open("/home/daniel/diffxml_list.txt")
+        newxml_list_file = os.path.join(XML_DIR, "newxml_list.txt")
+        diffxml_list_file = os.path.join(XML_DIR, "diff_list.txt")
+        newxml_local_list_file = os.path.join(XML_DIR, "newxml_local_list.txt") # list of path to new xml files
+        # newxml_local_list_fp = tempfile.NamedTemporaryFile()
     else:
         # newxml_list_fp = tempfile.NamedTemporaryFile()
         newxml_list_file = os.path.join(XML_DIR, "newxml_list.txt")
@@ -348,77 +354,109 @@ if __name__ == '__main__':
 
         # get_newxml_list(FTP_MNTPNT, newxml_list_file)
 
-        # 1.1.4 calculate diff between existing files and files on PMCOA and download the new ones.
+        # 1.1.2 calculate diff between existing files and files on PMCOA and download the new ones.
         # If there are no pre-existing files, download the full repository
 
+        newxml_id_list = []  # list of paper ids to be downloaded
+
         if os.path.isfile(os.path.join(XML_DIR, "current_filelist.txt")):
-            # delete previous versions
-            command = ("diff {} {}/current_filelist.txt | grep \"^<\" | "
-                       "awk '{{print $4}}' | awk -F\"/\" '{{print $NF}}' | sed 's/.tar.gz//g' | "
-                       "xargs -I {{}} rm -rf \"{}/{{}}\"").format(newxml_list_fp.name, XML_DIR, XML_DIR)
-            os.system(command)
-            # download diff files and update diffxml_list file
-            command = ("diff {} {}/current_filelist.txt | grep \"^<\" | "
-                       "awk '{{print $4}}' | awk -F\"/\" '{{print $(NF-2)\"/\"$(NF-1)\"/\"$NF}}' | "
-                       "xargs -n 1 -P {} -I {{}} sh -c "
-                       "'wget -qO- \"ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/{{}}\" | tar xfz - "
-                       "--exclude=\"*.pdf\" --exclude=\"*.PDF\" --exclude=\"*.mp4\" --exclude=\"*.webm\" "
-                       "--exclude=\"*.flv\" --exclude=\"*.avi\" --exclude=\"*.zip\" --exclude=\"*.mov\" "
-                       "--exclude=\"*.csv\" --exclude=\"*.xls*\" --exclude=\"*.doc*\" --exclude=\"*.ppt*\" "
-                       "--exclude=\"*.rar\" --exclude=\"*.txt\" --exclude=\"*.TXT\" --exclude=\"*.wmv\" "
-                       "--exclude=\"*.DOC*\" -C '\"${XML_DIR}\"").format(newxml_list_fp.name, XML_DIR, N_PROC)
-            os.system(command)
-            command = ("diff {} {}/current_filelist.txt | grep \"^<\" | "
-                       "sed 's/< //g' > {}").format(newxml_list_fp.name, XML_DIR, diffxml_list_fp.name)
-            os.system(command)
+            # delete previous versions and get list of updated/new files
+            newxml_list_text = open(newxml_list_file, 'r').readlines()
+            current_filelist_text = open(os.path.join(XML_DIR, "current_filelist.txt")).readlines()
+
+            # obtain the difference between original xml list and new xml list
+            with open(diffxml_list_file, 'w') as fpout:
+                for line in difflib.unified_diff(current_filelist_text, newxml_list_text):
+                    line = line.strip()
+                    if line in {'', '+', '+++', '-', '---'}:
+                        continue
+                    if line[0] == '+':
+                        newxml_id_list.append(line.split()[-1].split('/')[-1][:-7])
+                        fpout.write(line[1:] + '\n')
+            print("newxml id list: ", newxml_id_list)
+            for newxml_file_id in newxml_id_list:
+                if os.path.isdir(os.path.join(XML_DIR, newxml_file_id)) and newxml_file_id != '':
+                    shutil.rmtree(os.path.join(XML_DIR, newxml_file_id))
+
+            # download diff files
+            if len(newxml_id_list) > 0:
+                if len(newxml_id_list) < N_PROC:
+                    n_proc = len(newxml_id_list)
+                else:
+                    n_proc = N_PROC
+                download_xmls(diffxml_list_file, XML_DIR, n_proc)
 
         else:
+            # download all files
             download_xmls(newxml_list_file, XML_DIR, N_PROC)
 
             # copy newxml_list to diffxml_list
-            with open(newxml_list_file, 'r') as newxml_list_fp:
-                line = newxml_list_fp.readline()
-                while line:
-                    diffxml_list_fp.write(line)
-                    line = newxml_list_fp.readline
+            with open(diffxml_list_file, 'w') as fpout:
+                with open(newxml_list_file, 'r') as newxml_list_fp:
+                    line = newxml_list_fp.readline()
+                    while line:
+                        if line.strip() != '':
+                            fpout.write(line)
+                            newxml_id_list.append(line.split()[-1].split('/')[-1][:-7])
+                        line = newxml_list_fp.readline()
 
-        """
         # remove empty files from diff list
-        temp_diff_fp = tempfile.NamedTemporaryFile()
-        command = ("awk '{{print $3}}' {} | awk -F\"/\" '{{print $NF}}' | sed 's/.tar.gz//g' | "
-                   "xargs -I {{}} bash -c 'if [[ -d \"$0/{{}}\" ]]; then echo \"{{}}\"; fi' \"{}\" "
-                   "> {}").format(diffxml_list_fp.name, XML_DIR, temp_diff_fp.name)
-        os.system(command)
-        diffxml_list_fp.close()
-        diffxml_list_fp = tempfile.NamedTemporaryFile()
-        temp_diff_fp.seek(0, 0)
-        line = temp_diff_fp.readline()
-        while line:
-            diffxml_list_fp.write(line)
-            line = temp_diff_fp.readline()
-        temp_diff_fp.close()
+        shutil.move(diffxml_list_file, os.path.join(XML_DIR, "diff_list_temp.txt"))
+        with open(diffxml_list_file, 'w') as fpout:
+            with open(os.path.join(XML_DIR, "diff_list_temp.txt"), 'r') as fpin:
+                line = fpin.readline()
+                while line:
+                    file_id = line.strip().split()[-1].split('/')[-1][:-7]
+                    if os.path.isdir(os.path.join(XML_DIR, file_id)):
+                        fpout.write(line)
+                    line = fpin.readline()
+        os.remove(os.path.join(XML_DIR, "diff_list_temp.txt"))
 
         # save the current list
         with open(os.path.join(XML_DIR, "current_filelist.txt"), 'w') as fpout:
-            newxml_list_fp.seek(0, 0)
-            line = newxml_list_fp.readline()
-            while line:
-                fpout.write(line)
-                line = newxml_list_fp.readline()
+            with open(newxml_list_file, 'r') as fpin:
+                line = fpin.readline()
+                while line:
+                    if line.strip() != '':
+                        fpout.write(line)
+                    line = fpin.readline()
 
-        # 1.1.5 save new xml local file list
-        diffxml_list_fp.seek(0, 0)
-        line = diffxml_list_fp.readline()
-        while line:
-            line = line.strip()
-            newxml_local_list_fp.write(os.path.join(XML_DIR, line) + '\n')
-            line = diffxml_list_fp.readline()
-        """
-        # 1.1.6 compress nxml and put images in a separate directory
-        # command = ("cat {} | xargs -I {{}} -n1 -P {} sh -c 'gzip \"{{}}\"/*.nxml; "
-        #            "mkdir \"{{}}\"/images; ls -d \"{{}}\"/* | grep -v .nxml | grep -v \"{{}}\"/images | "
-        #            "xargs -I [] mv [] \"{{}}\"/images'").format(newxml_local_list_fp.name, N_PROC)
-        # os.system(command)
+        # 1.1.3 save new xml local file list
+        with open(newxml_local_list_file, 'w') as fpout:
+            for newxml_id in newxml_id_list:
+                fpout.write(os.path.join(XML_DIR, newxml_id) + '\n')
+
+        # 1.1.4 compress nxml and put images in a separate directory
+        # obtain list of nxml file names
+        nxml_file_list = list()  # list of file_id/nxml_file_name
+        for newxml_id in newxml_id_list:
+            for nxml_file in os.listdir(os.path.join(XML_DIR, newxml_id)):
+                if nxml_file.endswith(".nxml") and os.path.isfile(os.path.join(XML_DIR, newxml_id, nxml_file)):
+                    nxml_file_list.append(os.path.join(newxml_id, nxml_file))
+
+        # prepare for parallel process of zipping
+        gzip_nxml_mp_args = list()
+        n_nxml_per_process = [math.floor(len(nxml_file_list) / N_PROC)] * N_PROC
+        for i in range(len(nxml_file_list) % N_PROC):
+            n_nxml_per_process[i] += 1
+        curr_idx = 0
+        for proc_idx in range(N_PROC):
+            gzip_nxml_mp_args.append((nxml_file_list[curr_idx:curr_idx + n_nxml_per_process[proc_idx]], XML_DIR, 3))
+            curr_idx += n_nxml_per_process[proc_idx]
+
+        pool = multiprocessing.Pool(processes=N_PROC)
+        pool.starmap(gzip_worker, gzip_nxml_mp_args)
+        pool.close()
+        pool.join()
+
+        # move images to separate subdirectory inside the id folder
+        for newxml_id in newxml_id_list:
+            os.makedirs(os.path.join(XML_DIR, newxml_id, "images"), exist_ok=True)
+            for f in os.listdir(os.path.join(XML_DIR, newxml_id)):
+                if '.nxml' not in f and f != 'images':
+                    shutil.move(os.path.join(XML_DIR, newxml_id, f),
+                                os.path.join(XML_DIR, newxml_id, "images", f))
+
     else:
         print("skipping download_xml")
 
@@ -441,17 +479,6 @@ if __name__ == '__main__':
             line = logfile_fp.readline()
     else:
         print("skipping download_pdf")
-
-    # Obtain list of corpus and papers
-    # corpus_pdf_dict = dict()  # {corpus: list of pdf files of the corpus}
-    # pdf_corpus_list = [d for d in os.listdir(PDF_DIR) if os.path.isdir(os.path.join(PDF_DIR, d))]
-    # print(pdf_corpus_list)
-    # for corpus in pdf_corpus_list:
-    #     corpus_paper_list = [d for d in os.listdir(os.path.join(PDF_DIR, corpus))
-    #                          if os.path.isdir(os.path.join(PDF_DIR, corpus, d))]
-    #     corpus_pdf_dict[corpus] = corpus_paper_list
-    #     for corpus_paper in corpus_paper:
-    #         newpdf_list_fp.write("{}/{}\n".format(corpus, corpus_paper))
 
 
     #################################################################################
@@ -916,6 +943,3 @@ if __name__ == '__main__':
 
     logfile_fp.close()
     removedpdf_list_fp.close()
-    # newxml_list_fp.close()
-    newxml_local_list_fp.close()
-    diffxml_list_fp.close()

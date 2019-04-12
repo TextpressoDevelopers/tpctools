@@ -55,7 +55,7 @@ def xml_download_worker(xml_list_file, offset, n_lines, output_dir):
                 continue
             ftp_filepath = '/'.join(line.split()[2].split("/")[-3:])
             tar_filename = line.split('/')[-1]
-            if os.path.isdir(os.path.join(output_dir, tar_filename)):
+            if os.path.isdir(os.path.join(output_dir, tar_filename)) and tar_filename != '':
                 shutil.rmtree(os.path.join(output_dir, tar_filename))
             urllib.request.urlretrieve("ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_package/" + ftp_filepath,
                                        filename=os.path.join(output_dir, tar_filename))
@@ -85,7 +85,6 @@ def download_xmls(xml_list_file, output_dir, n_proc):
 
     # set up multiprocessing arguments
     xml_download_mp_args = list()
-    print(line_offset_list)
     offset, offset_idx = 0, 0
     for proc_idx in range(n_proc):
         xml_download_mp_args.append((xml_list_file, offset, n_lines_per_process[proc_idx], output_dir))
