@@ -134,7 +134,7 @@ def gzip_worker(file_list, path, type):
             target_file = os.path.join(path, file, file + '.tpcas')
         elif type == 2 or type == 3:
             target_file = os.path.join(path, file)
-
+        print(target_file)
         if type == 1 or type == 2:  # tpcas
             if target_file.endswith('.tpcas') and os.path.isfile(target_file):
                 subprocess.check_call(['gzip', '-f', target_file])
@@ -207,15 +207,17 @@ def generate_tpcas1(input_dir, file_format, n_proc):
             os.remove("/tmp/tmplist_{}.txt".format(proc_idx))
 
 
-def generate_xml_tpcas1(input_dir, file_list_fp, n_proc):
+def generate_xml_tpcas1(input_dir, xml_list_file, n_proc):
     print("Using {} processes".format(n_proc))
     os.chdir(CAS1_DIR)
     file_list = list()
-    file_list_fp.seek(0, 0)
-    line = file_list_fp.readline()
-    while line:
-        file_list.append(line.strip())
-        line = file_list_fp.readline()
+    with open(xml_list_file, 'r') as fpin:
+        line = fpin.readline()
+        while line:
+            line = line.strip()
+            if line != '':
+                file_list.append(line)
+            line = fpin.readline()
     n_xml_per_process = [math.floor(len(file_list) / n_proc)] * n_proc
     for i in range(len(file_list) % n_proc):
         n_xml_per_process[i] += 1
@@ -268,7 +270,7 @@ def generate_xml_tpcas2(n_proc, input_dir, output_dir):
     poo.join()
 
 
-def compress_tpcas(input_dir, n_proc, type, is_xml=False):
+def compress_tpcas(input_dir, n_proc, type, is_xml=False, target_corpus=None):
     """
     Compresses .tpcas files in input_dir in parallel using n_proc cpus
     :param input_dir: for type 1 - directory of the corpus
@@ -276,10 +278,13 @@ def compress_tpcas(input_dir, n_proc, type, is_xml=False):
     :param n_proc: number of processes to use
     :param type: 1 if cas1, 2 if cas2
     :param is_xml: True if compressing xml tpcas, False if not
+    :param target_corpus: specific target corpus to gzip
     """
     assert type == 1 or type == 2
     for corpus in [d for d in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, d))]:
         if is_xml and corpus != 'xml':
+            continue
+        if target_corpus is not None and corpus != target_corpus:
             continue
         tpcas_file_list = os.listdir(os.path.join(input_dir, corpus))
         # obtain the number of files assigned to each process
@@ -328,15 +333,10 @@ if __name__ == '__main__':
     # for testing use actual files not temporary files
     if TEST_MODE:
         print("running in testing mode")
-        newxml_list_file = os.path.join(XML_DIR, "newxml_list.txt")
-        diffxml_list_file = os.path.join(XML_DIR, "diff_list.txt")
-        newxml_local_list_file = os.path.join(XML_DIR, "newxml_local_list.txt") # list of path to new xml files
-        # newxml_local_list_fp = tempfile.NamedTemporaryFile()
-    else:
-        # newxml_list_fp = tempfile.NamedTemporaryFile()
-        newxml_list_file = os.path.join(XML_DIR, "newxml_list.txt")
-        newxml_local_list_fp = tempfile.NamedTemporaryFile()
-        diffxml_list_fp = tempfile.NamedTemporaryFile()
+
+    newxml_list_file = os.path.join(XML_DIR, "newxml_list.txt")
+    diffxml_list_file = os.path.join(XML_DIR, "diff_list.txt")
+    newxml_local_list_file = os.path.join(XML_DIR, "newxml_local_list.txt")  # list of path to new xml files
 
     excluded_steps = EXCLUDE_STEPS.split(',')
 
@@ -352,7 +352,8 @@ if __name__ == '__main__':
         os.makedirs(XML_DIR, exist_ok=True)
         os.makedirs(FTP_MNTPNT, exist_ok=True)
 
-        # get_newxml_list(FTP_MNTPNT, newxml_list_file)
+        if not TEST_MODE:
+            get_newxml_list(FTP_MNTPNT, newxml_list_file)
 
         # 1.1.2 calculate diff between existing files and files on PMCOA and download the new ones.
         # If there are no pre-existing files, download the full repository
@@ -376,7 +377,7 @@ if __name__ == '__main__':
             print("newxml id list: ", newxml_id_list)
             for newxml_file_id in newxml_id_list:
                 if os.path.isdir(os.path.join(XML_DIR, newxml_file_id)) and newxml_file_id != '':
-                    shutil.rmtree(os.path.join(XML_DIR, newxml_file_id))
+                    shutil.rmtree(os.path.join(XML_DIR, newxml_file_id), ignore_errors=True)
 
             # download diff files
             if len(newxml_id_list) > 0:
@@ -432,7 +433,9 @@ if __name__ == '__main__':
         for newxml_id in newxml_id_list:
             for nxml_file in os.listdir(os.path.join(XML_DIR, newxml_id)):
                 if nxml_file.endswith(".nxml") and os.path.isfile(os.path.join(XML_DIR, newxml_id, nxml_file)):
-                    nxml_file_list.append(os.path.join(newxml_id, nxml_file))
+                    os.rename(os.path.join(XML_DIR, newxml_id, nxml_file),
+                              os.path.join(XML_DIR, newxml_id, newxml_id + '.nxml'))
+                    nxml_file_list.append(os.path.join(newxml_id, newxml_id + '.nxml'))
 
         # prepare for parallel process of zipping
         gzip_nxml_mp_args = list()
@@ -570,47 +573,60 @@ if __name__ == '__main__':
         # 2.2 Generate TPCAS-1 from XML FILES
 
         # remove old versions
-        newxml_local_list_fp.seek(0, 0)
-        line = newxml_local_list_fp.readline()
-        while line:
-            line = line.strip()
-            file_id = line.split('/')[-1]
-            os.system("rm -rf {}/PMCOA/{}".format(CAS1_DIR, file_id))
-            line = newxml_local_list_fp.readline()
+        with open(newxml_local_list_file, 'r') as fpin:
+            line = fpin.readline()
+            while line:
+                line = line.strip()
+                if line != '':
+                    file_id = line.split('/')[-1]
+                    shutil.rmtree(os.path.join(CAS1_DIR, "PMCOA", file_id), ignore_errors=True)
+                line = fpin.readline()
 
         os.makedirs(os.path.join(CAS1_DIR, 'PMCOA'), exist_ok=True)
-        generate_xml_tpcas1(XML_DIR, newxml_local_list_fp, N_PROC)
+        generate_xml_tpcas1(XML_DIR, newxml_local_list_file, N_PROC)
+
         # add images to tpcas directory and gzip
         # TODO: translate into Python and add multiprocessing
-        command = ("cat {} | awk 'BEGIN{{FS=\"/\"}}{{print $NF}}' | "
-                   "xargs -n1 -P {} -I {{}} sh -c 'dirname=$(echo \"{{}}\"); "
-                   "rm -rf \"$0/PMCOA/${dirname}/images\";  ln -fs \"$1/${dirname}/images\" "
-                   "\"$0/PMCOA/${dirname}/images\"; find -L \"$0/PMCOA/${dirname}\" -name \"*.tpcas\" | "
-                   "xargs -I [] gzip -f \"[]\"' {} {}").format(newxml_local_list_fp.name, N_PROC, CAS1_DIR, XML_DIR)
-        os.system(command)
 
-        # 2.2.1 copy files to TMP_DIR
+        # create symbolic link in CAS1_DIR, pointing to images in XML_DIR
+        with open(newxml_local_list_file, 'r') as fpin:
+            line = fpin.readline()
+            while line:
+                line = line.strip()
+                if line != '':
+                    file_id = line.split('/')[-1]
+                    shutil.rmtree(os.path.join(CAS1_DIR, "PMCOA", file_id, "images"))
+                    os.symlink(os.path.join(XML_DIR, file_id, "images"),
+                               os.path.join(CAS1_DIR, 'PMCOA', file_id, "images"))
+                line = fpin.readline()
+
+        # compress files in CAS1_DIR
+        compress_tpcas(CAS1_DIR, N_PROC, 1, target_corpus="PMCOA")
+
+        # 2.2.1 copy xml files to TMP_DIR
         os.makedirs(os.path.join(TMP_DIR, 'tpcas-1', 'xml'), exist_ok=True)
 
-        # TODO: test parallel vs nonparallel for copying files
         dir_list = list()
-        newxml_local_list_fp.seek(0, 0)
-        line = newxml_local_list_fp.readline()
-        while line:
-            dir_list.append(line.strip().split("/")[-1])
-            line = newxml_local_list_fp.readline()
+        with open(newxml_local_list_file, 'r') as fpin:
+            line = fpin.readline()
+            while line:
+                line = line.strip()
+                if line != '':
+                    dir_list.append(line.split("/")[-1])
+                line = fpin.readline()
 
         num_papers_to_process_together = int(math.ceil(len(dir_list) / N_PROC))
         i, subdir_idx = 1, 1
         os.makedirs(os.path.join(TMP_DIR, 'tpcas-1', 'xml', 'subdir_1'), exist_ok=True)
         for dirname in dir_list:
             if i > num_papers_to_process_together:
-                i = 0
+                i = 1
                 subdir_idx += 1
                 os.makedirs(os.path.join(TMP_DIR, 'tpcas-1', 'xml', 'subdir_{}'.format(subdir_idx)), exist_ok=True)
             shutil.copy(os.path.join(CAS1_DIR, 'PMCOA', dirname, dirname + ".tpcas.gz"),
                         os.path.join(TMP_DIR, "tpcas-1", "xml", "subdir_{}".format(subdir_idx), dirname + ".tpcas.gz"))
             i += 1
+
     else:
         print("skipping cas1...")
 
