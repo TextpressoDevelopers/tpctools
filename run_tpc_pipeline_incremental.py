@@ -267,7 +267,7 @@ def generate_xml_tpcas2(n_proc, input_dir, output_dir):
     pool = multiprocessing.Pool(processes=n_proc)
     pool.starmap(cas2_xml_worker, cas2_mp_args)
     pool.close()
-    poo.join()
+    pool.join()
 
 
 def compress_tpcas(input_dir, n_proc, type, is_xml=False, target_corpus=None):
@@ -585,9 +585,6 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(CAS1_DIR, 'PMCOA'), exist_ok=True)
         generate_xml_tpcas1(XML_DIR, newxml_local_list_file, N_PROC)
 
-        # add images to tpcas directory and gzip
-        # TODO: translate into Python and add multiprocessing
-
         # create symbolic link in CAS1_DIR, pointing to images in XML_DIR
         with open(newxml_local_list_file, 'r') as fpin:
             line = fpin.readline()
@@ -641,15 +638,15 @@ if __name__ == '__main__':
     if 'cas2' not in excluded_steps:
         print("Generating CAS2 files ...")
 
-        # 3.1 APPLY UIMA ANALYSIS
+        # 3.1 Prepare UIMA Analysis
 
         # create directory structure of tmp/tpcas-2 if it does not exist
         os.chdir(CAS1_DIR)
         for folder in [d for d in os.listdir(CAS1_DIR) if os.path.isdir(os.path.join(CAS1_DIR, d))]:
             os.makedirs(os.path.join(TMP_DIR, 'tpcas-2', folder), exist_ok=True)
         os.makedirs(os.path.join(TMP_DIR, 'tpcas-2', 'xml'), exist_ok=True)
-
-        # decompress all pdf cas files in tmp/tpcas-1 before running UIMA analysis
+        """
+        # 3.1.1 Decompress all pdf cas files in tmp/tpcas-1 before running UIMA analysis
         for corpus in [d for d in os.listdir(os.path.join(TMP_DIR, 'tpcas-1'))
                        if os.path.isdir(os.path.join(TMP_DIR, 'tpcas-1', d))]:
             if corpus == 'xml':
@@ -670,15 +667,15 @@ if __name__ == '__main__':
             pool.starmap(gunzip_worker, gunzip_mp_args)
             pool.close()
             pool.join()
-
-        # decompress all xml cas files in tmp/tpcas-1 before running UIMA analysis
+        
+        # 3.1.2 Decompress all xml cas files in tmp/tpcas-1 before running UIMA analysis
         gunzip_mp_args = list()
         for subdir in [d for d in os.listdir(os.path.join(TMP_DIR, 'tpcas-1', 'xml'))
                        if os.path.isdir(os.path.join(TMP_DIR, 'tpcas-1', 'xml', d))]:
             gunzip_mp_args.append(([f for f in os.listdir(os.path.join(TMP_DIR, 'tpcas-1', 'xml', subdir))
                                     if os.path.isfile(os.path.join(TMP_DIR, 'tpcas-1', 'xml', subdir, f))
                                     and f.endswith('.tpcas.gz')],
-                                   os.path.join(TMP_DIR, 'tpcas-1', xml, subdir)))
+                                   os.path.join(TMP_DIR, 'tpcas-1', 'xml', subdir)))
         pool = multiprocessing.Pool(processes=N_PROC)
         pool.starmap(gunzip_worker, gunzip_mp_args)
         pool.close()
@@ -686,8 +683,8 @@ if __name__ == '__main__':
         print("Successfully unzipped .tpcas.gz files")
 
         # 3.2 APPLY UIMA ANALYSIS
-
-        # run UIMA analysis on pdf files
+        
+        # 3.2.1 Run UIMA analysis on pdf files
         print("Running UIMA analysis for pdf...")
         corpus_list = [d for d in os.listdir(os.path.join(TMP_DIR, 'tpcas-1'))
                        if os.path.isdir(os.path.join(TMP_DIR, 'tpcas-1', d))]
@@ -699,33 +696,32 @@ if __name__ == '__main__':
         generate_tpcas2(corpus_list, len(corpus_list), os.path.join(TMP_DIR, "tpcas-1"),
                         os.path.join(TMP_DIR, "tpcas-2"))
         compress_tpcas(os.path.join(TMP_DIR, "tpcas-2"), N_PROC, 2)
-
-        # run UIMA analysis on xml files
+        
+        # 3.2.2 Run UIMA analysis on xml files
         print("Running UIMA analysis for xml...")
 
         # remove old versions of xml
-        newxml_local_list_fp.seek(0, 0)
-        line = newxml_local_list_fp.readline()
-        while line:
-            os.system("rm -r {}".format(os.path.join(CAS2_DIR, 'PMCOA', line.strip().split('/')[-1])))
-            line = newxml_local_list_fp.readline()
+        with open(newxml_local_list_file, 'r') as fpin:
+            line = fpin.readline()
+            while line:
+                line = line.strip()
+                if line != '':
+                    shutil.rmtree(os.path.join(CAS2_DIR, "PMCOA", line.split('/')[-1]), ignore_errors=True)
+                line = fpin.readline()
 
         generate_xml_tpcas2(N_PROC, os.path.join(TMP_DIR, 'tpcas-1', 'xml'),
                             os.path.join(TMP_DIR, 'tpcas-2', 'xml'))
         compress_tpcas(os.path.join(TMP_DIR, "tpcas-2"), N_PROC, 2, is_xml=True)
-
+        """
         # 3.3 Setup TPCAS-2 DIRS
 
         # create TPCAS-2 directory and its subdirectories
-        if not os.path.isdir(CAS2_DIR):
-            os.mkdir(CAS2_DIR)
-        if not os.path.isdir(os.path.join(CAS2_DIR, "PMCOA")):
-            os.mkdir(os.path.join(CAS2_DIR, "PMCOA"))
-        for corpus in [d for d in os.listdir(os.path.join(TMP_DIR, "tpcas-2"))
-                       if os.path.isdir(os.path.join(TMP_DIR, "tpcas-2", d))]:
-            if not os.path.isdir(os.path.join(CAS2_DIR, corpus)):
-                os.mkdir(os.path.join(CAS2_DIR, corpus))
-
+        os.makedirs(CAS2_DIR, exist_ok=True)
+        os.makedirs(os.path.join(CAS2_DIR, "PMCOA"), exist_ok=True)
+        for corpus in [d for d in os.listdir(CAS1_DIR)
+                       if os.path.isdir(os.path.join(CAS1_DIR, d))]:
+            os.makedirs(os.path.join(CAS2_DIR, corpus), exist_ok=True)
+        """
         # 3.3.1 pdf
         for corpus in [d for d in os.listdir(PDF_DIR) if os.path.isdir(os.path.join(PDF_DIR, d))]:
             for file_id in [d for d in os.listdir(os.path.join(CAS1_DIR, corpus))
@@ -739,23 +735,26 @@ if __name__ == '__main__':
                 if not os.path.isfile(os.path.join(CAS2_DIR, corpus, file_id, file_id + ".tpcas.gz")):
                     shutil.copy(os.path.join(TMP_DIR, "tpcas-2", corpus, file_id + ".tpcas.gz"),
                                 os.path.join(CAS2_DIR, corpus, file_id, file_id + ".tpcas.gz"))
-
+        """
         # 3.3.2 xml
-        newxml_local_list_fp.seek(0, 0)
-        line = newxml_local_list_fp.readline()
-        while line:
-            dirname = line.strip().split('/')[-1]
-            if os.path.isdir(os.path.join(CAS1_DIR, 'PMCOA', dirname)):
-                tpcas_filename = [f for f in os.listdir(os.path.join(CAS1_DIR, 'PMCOA', dirname))
-                                  if os.path.isfile(f) and f.endswith('.tpcas.gz')][0]
-                os.makedirs(os.path.join(CAS2_DIR, 'PMCOA', dirname), exist_ok=True)
-                if os.path.exists(os.path.join(CAS2_DIR, 'PMCOA', dirname, 'images')):
-                    os.remove(os.path.join(CAS2_DIR, 'PMCOA', dirname, 'images'))
-                os.system("ln -s {} {}".format(os.path.join(CAS1_DIR, 'PMCOA', dirname, 'images'),
-                                               os.path.join(CAS2_DIR, 'PMCOA', dirname, 'images')))
-                shutil.copy(os.path.join(TMP_DIR, 'tpcas-2', 'xml', dirname + '.tpcas.gz'),
-                            os.path.join(CAS2_DIR, 'PMCOA', dirname, tpcas_filename))
-            line = newxml_local_list_fp.readline()
+        with open(newxml_local_list_file, 'r') as fpin:
+            line = fpin.readline()
+            while line:
+                line = line.strip()
+                if line != '':
+                    dirname = line.split('/')[-1]
+                    if os.path.isdir(os.path.join(CAS1_DIR, 'PMCOA', dirname)):
+                        tpcas_filename = [f for f in os.listdir(os.path.join(CAS1_DIR, 'PMCOA', dirname))
+                                          if f.endswith('.tpcas.gz')][0]
+                        os.makedirs(os.path.join(CAS2_DIR, 'PMCOA', dirname), exist_ok=True)
+                        if os.path.exists(os.path.join(CAS2_DIR, 'PMCOA', dirname, 'images')):
+                            os.remove(os.path.join(CAS2_DIR, 'PMCOA', dirname, 'images'))
+                        os.symlink(os.path.join(CAS1_DIR, 'PMCOA', dirname, 'images'),
+                                   os.path.join(CAS2_DIR, 'PMCOA', dirname, 'images'))
+                        shutil.copy(os.path.join(TMP_DIR, 'tpcas-2', 'xml', dirname + '.tpcas.gz'),
+                                    os.path.join(CAS2_DIR, 'PMCOA', dirname, tpcas_filename))
+                line = fpin.readline()
+
     else:
         print("skipping cas2...")
 
