@@ -165,10 +165,6 @@ def pdf2txt_worker(input_path, output_path, file_id_list):
             fpout.write(text)
 
 
-def xml_bib_worker(input_file, output_path):
-    os.system("getbib4nxml {} -f {}".format(output_path, input_file))
-
-
 def generate_tpcas1(input_dir, file_format, n_proc):
     """
     Generates tpcas1 files
@@ -478,7 +474,7 @@ if __name__ == '__main__':
             line = line.decode('utf-8').strip()
             match = re.search(remove_pattern, line)
             if match:
-                removedpdf_list_fp.write(match.gropu(2))
+                removedpdf_list_fp.write(match.group(2))  # write the paper name to the file
             line = logfile_fp.readline()
     else:
         print("skipping download_pdf")
@@ -498,8 +494,7 @@ if __name__ == '__main__':
         os.makedirs(CAS1_DIR, exist_ok=True)
 
         for folder in [d for d in os.listdir(PDF_DIR) if os.path.isdir(os.path.join(PDF_DIR, d))]:
-            if not os.path.isdir(os.path.join(CAS1_DIR, folder)):
-                os.mkdir(os.path.join(CAS1_DIR, folder))
+            os.makedirs(os.path.join(CAS1_DIR, folder), exist_ok=True)
 
         generate_tpcas1(PDF_DIR, 1, N_PROC)
         compress_tpcas(CAS1_DIR, N_PROC, 1)
@@ -645,7 +640,7 @@ if __name__ == '__main__':
         for folder in [d for d in os.listdir(CAS1_DIR) if os.path.isdir(os.path.join(CAS1_DIR, d))]:
             os.makedirs(os.path.join(TMP_DIR, 'tpcas-2', folder), exist_ok=True)
         os.makedirs(os.path.join(TMP_DIR, 'tpcas-2', 'xml'), exist_ok=True)
-        """
+
         # 3.1.1 Decompress all pdf cas files in tmp/tpcas-1 before running UIMA analysis
         for corpus in [d for d in os.listdir(os.path.join(TMP_DIR, 'tpcas-1'))
                        if os.path.isdir(os.path.join(TMP_DIR, 'tpcas-1', d))]:
@@ -654,6 +649,7 @@ if __name__ == '__main__':
             cas1_zipped_list = [f for f in os.listdir(os.path.join(TMP_DIR, 'tpcas-1', corpus))
                                 if f[-3:] == '.gz']
             gunzip_mp_args = list()
+
             n_files_per_process = [math.floor(len(cas1_zipped_list) / N_PROC)] * N_PROC
             for i in range(len(cas1_zipped_list) % N_PROC):
                 n_files_per_process[i] += 1
@@ -663,6 +659,7 @@ if __name__ == '__main__':
                 gunzip_mp_args.append((cas1_zipped_list[curr_idx:curr_idx + n_files_per_process[proc_idx]],
                                        os.path.join(TMP_DIR, 'tpcas-1', corpus)))
                 curr_idx += n_files_per_process[proc_idx]
+
             pool = multiprocessing.Pool(processes=N_PROC)
             pool.starmap(gunzip_worker, gunzip_mp_args)
             pool.close()
@@ -712,7 +709,7 @@ if __name__ == '__main__':
         generate_xml_tpcas2(N_PROC, os.path.join(TMP_DIR, 'tpcas-1', 'xml'),
                             os.path.join(TMP_DIR, 'tpcas-2', 'xml'))
         compress_tpcas(os.path.join(TMP_DIR, "tpcas-2"), N_PROC, 2, is_xml=True)
-        """
+
         # 3.3 Setup TPCAS-2 DIRS
 
         # create TPCAS-2 directory and its subdirectories
@@ -721,7 +718,7 @@ if __name__ == '__main__':
         for corpus in [d for d in os.listdir(CAS1_DIR)
                        if os.path.isdir(os.path.join(CAS1_DIR, d))]:
             os.makedirs(os.path.join(CAS2_DIR, corpus), exist_ok=True)
-        """
+
         # 3.3.1 pdf
         for corpus in [d for d in os.listdir(PDF_DIR) if os.path.isdir(os.path.join(PDF_DIR, d))]:
             for file_id in [d for d in os.listdir(os.path.join(CAS1_DIR, corpus))
@@ -735,7 +732,7 @@ if __name__ == '__main__':
                 if not os.path.isfile(os.path.join(CAS2_DIR, corpus, file_id, file_id + ".tpcas.gz")):
                     shutil.copy(os.path.join(TMP_DIR, "tpcas-2", corpus, file_id + ".tpcas.gz"),
                                 os.path.join(CAS2_DIR, corpus, file_id, file_id + ".tpcas.gz"))
-        """
+
         # 3.3.2 xml
         with open(newxml_local_list_file, 'r') as fpin:
             line = fpin.readline()
@@ -792,31 +789,35 @@ if __name__ == '__main__':
         create_bib(os.path.join(CAS2_DIR, "xenbase"), "/home/daniel/xenbase_info")
 
         # 4.2 xml
-        cas_dir_to_process = "${CAS2_DIR}/PMCOA"
+        cas_dir_to_process = os.path.join(CAS2_DIR, "PMCOA")
         if os.path.isdir(os.path.join(TMP_DIR, "tpcas-2", "xml")):
             cas_dir_to_process = os.path.join(TMP_DIR, "tpcas-2", "xml")
         cas_file_list = os.listdir(cas_dir_to_process)
+
+        # multiprocess gebib4nxml
         if len(cas_file_list) > 0:
-            # multiprocess gebib4nxml
+            def xml_bib_worker(input_file, output_path):
+                os.system("getbib4nxml \"{}\" -f {}".format(output_path, input_file))
+
             curr_idx = 0
             xml_bib_args = list()
-            with tempfile.TemporaryDirectory() as tempdir:
-                n_files_per_process = [math.floor(len(cas_file_list) / N_PROC)] * N_PROC
-                for i in range(len(cas_file_list) % N_PROC):
-                    n_files_per_process[i] += 1
+            tempdir = os.path.join(CAS2_DIR, "PMCOA", "tempdir")
+            os.makedirs(tempdir, exist_ok=True)
+            n_files_per_process = [int(math.floor(len(cas_file_list) / N_PROC))] * N_PROC
+            for i in range(len(cas_file_list) % N_PROC):
+                n_files_per_process[i] += 1
 
-                for proc_idx in range(N_PROC):
-                    xml_filelist = open(os.path.join(tempdir, "file_to_process-{}".format(proc_idx)))
+            for proc_idx in range(N_PROC):
+                xml_filelist = os.path.join(tempdir, "file_to_process-{}".format(proc_idx))
+                with open(xml_filelist, 'w') as fpout:
                     for filename in cas_file_list[curr_idx:curr_idx + n_files_per_process[proc_idx]]:
-                        xml_filelist.write(filename.replace('.tpcas.gz', '') + '\n')
-                    xml_filelist.close()
-                    xml_bib_args.append((os.path.join(tempdir, xml_filelist), os.path.join(CAS2_DIR, 'PMCOA')))
-                    curr_idx += n_files_per_process[proc_idx]
-
-                pool = multiprocessing.Pool(processes=N_PROC)
-                pool.starmap(xml_bib_worker, xml_bib_args)
-                pool.close()
-                pool.join()
+                        fpout.write(filename.replace('.tpcas.gz', '') + '\n')
+                xml_bib_args.append((os.path.join(tempdir, xml_filelist), os.path.join(CAS2_DIR, 'PMCOA')))
+                curr_idx += n_files_per_process[proc_idx]
+            pool = multiprocessing.Pool(processes=N_PROC)
+            pool.starmap(xml_bib_worker, xml_bib_args)
+            pool.close()
+            pool.join()
 
     else:
         print("Skipping bib...")
@@ -827,11 +828,11 @@ if __name__ == '__main__':
 
     if 'invert_img' not in excluded_steps:
         print("Inverting images...")
+
         def invert_img_worker(file_id_list, corpus_dir):
             corpus_dir = '\ '.join(corpus_dir.strip().split(" "))
             for file_id in file_id_list:
                 os.system("cmykinverter {}".format(os.path.join(corpus_dir, file_id, "images")))
-
 
         # invert images of each corpus in parallel
         for corpus in [d for d in os.listdir(CAS2_DIR) if os.path.isdir(os.path.join(CAS2_DIR, d))]:
@@ -917,7 +918,6 @@ if __name__ == '__main__':
 
     if "remove_invalidated" not in EXCLUDE_STEPS:
         print("Removing invalid papers deleted from server...")
-        # temp file for listing files to be deleted
         tpcas2_file_dict = dict()
         for corpus in [d for d in os.listdir(CAS2_DIR)
                        if os.path.isdir(os.path.join(CAS2_DIR, d))]:
@@ -927,14 +927,15 @@ if __name__ == '__main__':
                             if os.path.isfile(os.path.join(CAS2_DIR, corpus, d, d + '.tpcas.gz'))]:
                 tpcas2_file_dict[corpus].append(file_id)
 
-        tempfile_fp = tempfile.TemporaryFile()
+        tempfile_fp = tempfile.TemporaryFile()  # temp file for listing files to be deleted
         removedpdf_list_fp.seek(0, 0)
         line = removedpdf_list_fp.readline()
         while line:
             line = line.strip()
-            corpus, file_id = line.split("/")[5], line.split("/")[6]
-            if file_id in tpcas2_file_dict[corpus]:
-                tempfile_fp.write(os.path.join(corpus, file_id, file_id + '.tpcas.gz' + '\n'))
+            if line != '':
+                corpus, file_id = line.split("/")[5], line.split("/")[6]
+                if file_id in tpcas2_file_dict[corpus]:
+                    tempfile_fp.write(os.path.join(corpus, file_id, file_id + '.tpcas.gz' + '\n'))
             line = removedpdf_list_fp.readline()
         os.system("cas2index -i {} -o {} -r {}".format(CAS2_DIR, INDEX_DIR, tempfile_fp.name))
 
@@ -942,9 +943,10 @@ if __name__ == '__main__':
         line = removedpdf_list_fp.readline()
         while line:
             line = line.strip()
-            file_dir = '/'.join(line.split('/')[5:7])
-            os.system("rm -rf {}".format(os.path.join(CAS1_DIR, file_dir)))
-            os.system("rm -rf {}".format(os.path.join(CAS2_DIR, file_dir)))
+            if line != '':
+                file_dir = '/'.join(line.split('/')[5:7])
+                shutil.rmtree(os.path.join(CAS1_DIR, file_dir))
+                shutil.rmtree(os.path.join(CAS2_DIR, file_dir))
             line = removedpdf_list_fp.readline()
 
         tempfile_fp.close()
