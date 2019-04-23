@@ -14,7 +14,8 @@ from getpdfs.getpdfs import download_pdfs
 from getxmls.getxmls import get_newxml_list, download_xmls
 from getbib.download_abstract import get_abstracts
 from getbib.make_bib import create_bib
-import pdf2text
+from pdf2text.pdf2text import convert_pdf2txt
+from utils import mp_setup
 
 
 default_config = {
@@ -150,21 +151,6 @@ def gunzip_worker(zipped_file_list, path):
             subprocess.check_call(['gunzip', tpcas_file])
 
 
-def pdf2txt_worker(input_path, output_path, file_id_list):
-    """
-    Converts pdf file to text file
-    :param input_path: path to pdf corpus directory
-    :param file_id_list: list of ids of files to process
-    """
-    for file_id in file_id_list:
-        pdf_file = os.path.join(input_path, file_id, file_id + '.pdf')
-        text = pdf2text.get_fulltext_from_pdfs_from_file(pdf_file)
-        if not os.path.isdir(os.path.join(output_path, file_id)):
-            os.mkdir(os.path.join(output_path, file_id))
-        with open(os.path.join(output_path, file_id, file_id + ".txt"), 'w') as fpout:
-            fpout.write(text)
-
-
 def generate_tpcas1(input_dir, file_format, n_proc):
     """
     Generates tpcas1 files
@@ -177,20 +163,8 @@ def generate_tpcas1(input_dir, file_format, n_proc):
     for corpus in [d for d in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, d))]:
         print("processing {}".format(corpus))
         corpus_file_list = os.listdir(os.path.join(input_dir, corpus))
-        n_pdf_per_process = [math.floor(len(corpus_file_list) / n_proc)] * n_proc
-        for i in range(len(corpus_file_list) % n_proc):
-            n_pdf_per_process[i] += 1
 
-        # split files i.e. allocate files to each cpu for multiprocessing
-        # TODO: skip ids of existing files
-        curr_idx = 0
-        cas1_mp_args = list()
-        for proc_idx in range(n_proc):
-            with open('/tmp/tmplist_{}.txt'.format(proc_idx), 'w') as fpout:
-                for filename in corpus_file_list[curr_idx:curr_idx + n_pdf_per_process[proc_idx]]:
-                    fpout.write(filename + '\n')
-            cas1_mp_args.append((proc_idx, corpus, input_dir, file_format))
-            curr_idx += n_pdf_per_process[proc_idx]
+        cas1_mp_args = mp_setup(corpus_file_list, (corpus, input_dir, file_format), n_proc, create_temp_files=True)
 
         # execute cas1_worker in parallel
         pool = multiprocessing.Pool(processes=n_proc)
@@ -212,20 +186,10 @@ def generate_xml_tpcas1(input_dir, xml_list_file, n_proc):
         while line:
             line = line.strip()
             if line != '':
-                file_list.append(line)
+                file_list.append(line.split('/')[-1])
             line = fpin.readline()
-    n_xml_per_process = [math.floor(len(file_list) / n_proc)] * n_proc
-    for i in range(len(file_list) % n_proc):
-        n_xml_per_process[i] += 1
 
-    curr_idx = 0
-    cas1_mp_args = list()
-    for proc_idx in range(n_proc):
-        with open('/tmp/tmplist_{}.txt'.format(proc_idx), 'w') as fpout:
-            for file_id in file_list[curr_idx:curr_idx + n_xml_per_process[proc_idx]]:
-                fpout.write(file_id.split('/')[-1] + '\n')
-            cas1_mp_args.append((proc_idx, input_dir))
-            curr_idx += n_xml_per_process[proc_idx]
+    cas1_mp_args = mp_setup(file_list, (input_dir,), n_proc, create_temp_files=True)
 
     # execute cas1_xml_worker in parallel
     pool = multiprocessing.Pool(processes=n_proc)
@@ -239,16 +203,16 @@ def generate_xml_tpcas1(input_dir, xml_list_file, n_proc):
 
 
 def generate_tpcas2(corpus_list, n_proc, input_dir, output_dir):
-    n_corpus_per_process = [math.floor(len(corpus_list) / n_proc)] * n_proc
-    for i in range(len(corpus_list) % n_proc):
-        n_corpus_per_process[i] += 1
+    """
+    Generates tpcas-2 files using multiprocessing
+    :param corpus_list:
+    :param n_proc:
+    :param input_dir:
+    :param output_dir:
+    :return:
+    """
+    cas2_mp_args = mp_setup(corpus_list, (input_dir, output_dir), n_proc)
 
-    # split corpus i.e. allocate corpus to each cpu for multiprocessing
-    curr_idx = 0
-    cas2_mp_args = list()
-    for proc_idx in range(n_proc):
-        cas2_mp_args.append((corpus_list[curr_idx:curr_idx + n_corpus_per_process[proc_idx]], input_dir, output_dir))
-        curr_idx += n_corpus_per_process[proc_idx]
     pool = multiprocessing.Pool(processes=n_proc)
     pool.starmap(cas2_worker, cas2_mp_args)
     pool.close()
@@ -282,19 +246,10 @@ def compress_tpcas(input_dir, n_proc, type, is_xml=False, target_corpus=None):
             continue
         if target_corpus is not None and corpus != target_corpus:
             continue
-        tpcas_file_list = os.listdir(os.path.join(input_dir, corpus))
-        # obtain the number of files assigned to each process
-        n_tpcas_per_process = [math.floor(len(tpcas_file_list) / n_proc)] * n_proc
-        for i in range(len(tpcas_file_list) % n_proc):
-            n_tpcas_per_process[i] += 1
 
-        # set up arguments to be used for each worker in multi-processing
-        curr_idx = 0
-        gzip_mp_args = list()
-        for proc_idx in range(n_proc):
-            gzip_mp_args.append((tpcas_file_list[curr_idx:curr_idx + n_tpcas_per_process[proc_idx]],
-                                 os.path.join(input_dir, corpus), type))
-            curr_idx += n_tpcas_per_process[proc_idx]
+        tpcas_file_list = os.listdir(os.path.join(input_dir, corpus))
+
+        gzip_mp_args = mp_setup(tpcas_file_list, (os.path.join(input_dir, corpus), type), n_proc)
 
         # run gzip_worker on multiprocess
         pool = multiprocessing.Pool(processes=n_proc)
@@ -433,15 +388,7 @@ if __name__ == '__main__':
                               os.path.join(XML_DIR, newxml_id, newxml_id + '.nxml'))
                     nxml_file_list.append(os.path.join(newxml_id, newxml_id + '.nxml'))
 
-        # prepare for parallel process of zipping
-        gzip_nxml_mp_args = list()
-        n_nxml_per_process = [math.floor(len(nxml_file_list) / N_PROC)] * N_PROC
-        for i in range(len(nxml_file_list) % N_PROC):
-            n_nxml_per_process[i] += 1
-        curr_idx = 0
-        for proc_idx in range(N_PROC):
-            gzip_nxml_mp_args.append((nxml_file_list[curr_idx:curr_idx + n_nxml_per_process[proc_idx]], XML_DIR, 3))
-            curr_idx += n_nxml_per_process[proc_idx]
+        gzip_nxml_mp_args = mp_setup(nxml_file_list, (XML_DIR, 3), N_PROC)
 
         pool = multiprocessing.Pool(processes=N_PROC)
         pool.starmap(gzip_worker, gzip_nxml_mp_args)
@@ -525,35 +472,10 @@ if __name__ == '__main__':
         for corpus in missing_files_dict:
             print("{}: {}".format(corpus, len(missing_files_dict[corpus])))
 
-        # convert pdf files to txt files
-        os.makedirs(TXT_DIR, exist_ok=True)
-        for corpus in missing_files_dict:
-            if len(missing_files_dict[corpus]) == 0:
-                continue
-            if not os.path.isdir(os.path.join(TXT_DIR, corpus)):
-                os.mkdir(os.path.join(TXT_DIR, corpus))
-            if len(missing_files_dict) > N_PROC:  # multiprocess
-                pdf2txt_mp_args = list()
-                n_pdf_per_process = [math.floor(len(missing_files_dict[corpus]) / N_PROC)] * N_PROC
-                for i in range(len(missing_files_dict[corpus]) % N_PROC):
-                    n_pdf_per_process[i] += 1
+        convert_pdf2txt(missing_files_dict, PDF_DIR, TXT_DIR, N_PROC)
 
-                curr_idx = 0
-                for proc_idx in range(N_PROC):
-                    pdf2txt_mp_args.append((os.path.join(PDF_DIR, corpus), os.path.join(TXT_DIR, corpus),
-                                            missing_files_dict[corpus][curr_idx:curr_idx + n_pdf_per_process[proc_idx]]))
-                    curr_idx += n_pdf_per_process[proc_idx]
-                pool = multiprocessing.Pool(processes=n_proc)
-                pool.starmap(pdf2text_worker, pdf2txt_mp_args)
-                pool.close()
-                pool.join()
-            else:
-                pdf2txt_worker(os.path.join(PDF_DIR, corpus), os.path.join(TXT_DIR, corpus),
-                               missing_files_dict[corpus])
-
-        # convert txt files to cas1 files
         # assume there are more txt files than N_PROC
-        generate_tpcas1(TXT_DIR, 3, N_PROC)
+        generate_tpcas1(TXT_DIR, 3, N_PROC)  # convert txt files to cas1 files
         compress_tpcas(CAS1_DIR, N_PROC, 1)
 
         # move newly converted cas1 to tmp files
@@ -648,17 +570,8 @@ if __name__ == '__main__':
                 continue
             cas1_zipped_list = [f for f in os.listdir(os.path.join(TMP_DIR, 'tpcas-1', corpus))
                                 if f[-3:] == '.gz']
-            gunzip_mp_args = list()
 
-            n_files_per_process = [math.floor(len(cas1_zipped_list) / N_PROC)] * N_PROC
-            for i in range(len(cas1_zipped_list) % N_PROC):
-                n_files_per_process[i] += 1
-
-            curr_idx = 0
-            for proc_idx in range(N_PROC):
-                gunzip_mp_args.append((cas1_zipped_list[curr_idx:curr_idx + n_files_per_process[proc_idx]],
-                                       os.path.join(TMP_DIR, 'tpcas-1', corpus)))
-                curr_idx += n_files_per_process[proc_idx]
+            gunzip_mp_args = mp_setup(cas1_zipped_list, (os.path.join(TMP_DIR, 'tpcas-1', corpus),), N_PROC)
 
             pool = multiprocessing.Pool(processes=N_PROC)
             pool.starmap(gunzip_worker, gunzip_mp_args)
@@ -763,7 +676,7 @@ if __name__ == '__main__':
         # 4.1 download bib info for pdfs
         print("Donwloading bib info for pdf files...")
         os.makedirs("/usr/local/textpresso/celegans_bib", exist_ok=True)
-
+        """
         # download bibs for C. elegans
         subprocess.check_call(['download_pdfinfo.pl', '/usr/local/textpresso/celegans_bib/'])
         subprocess.check_call(['extract_pdfbibinfo.pl', '/usr/local/textpresso/celegans_bib/'])
@@ -787,33 +700,23 @@ if __name__ == '__main__':
         # the paper ids in the corpora directory needs to be the pmid
         get_abstracts(os.path.join(CAS2_DIR, "xenbase"), 300)
         create_bib(os.path.join(CAS2_DIR, "xenbase"), "/home/daniel/xenbase_info")
-
+        """
         # 4.2 xml
         cas_dir_to_process = os.path.join(CAS2_DIR, "PMCOA")
         if os.path.isdir(os.path.join(TMP_DIR, "tpcas-2", "xml")):
             cas_dir_to_process = os.path.join(TMP_DIR, "tpcas-2", "xml")
+
         cas_file_list = os.listdir(cas_dir_to_process)
+        cas_file_list = list(map(lambda x: x.replace('.tpcas.gz', ''), cas_file_list))
 
         # multiprocess gebib4nxml
         if len(cas_file_list) > 0:
-            def xml_bib_worker(input_file, output_path):
+            def xml_bib_worker(proc_idx, output_path):
+                input_file = "/tmp/tmplist_{}.txt".format(proc_idx)
                 os.system("getbib4nxml \"{}\" -f {}".format(output_path, input_file))
 
-            curr_idx = 0
-            xml_bib_args = list()
-            tempdir = os.path.join(CAS2_DIR, "PMCOA", "tempdir")
-            os.makedirs(tempdir, exist_ok=True)
-            n_files_per_process = [int(math.floor(len(cas_file_list) / N_PROC))] * N_PROC
-            for i in range(len(cas_file_list) % N_PROC):
-                n_files_per_process[i] += 1
+            xml_bib_args = mp_setup(cas_file_list, (os.path.join(CAS2_DIR, 'PMCOA'),), N_PROC, create_temp_files=True)
 
-            for proc_idx in range(N_PROC):
-                xml_filelist = os.path.join(tempdir, "file_to_process-{}".format(proc_idx))
-                with open(xml_filelist, 'w') as fpout:
-                    for filename in cas_file_list[curr_idx:curr_idx + n_files_per_process[proc_idx]]:
-                        fpout.write(filename.replace('.tpcas.gz', '') + '\n')
-                xml_bib_args.append((os.path.join(tempdir, xml_filelist), os.path.join(CAS2_DIR, 'PMCOA')))
-                curr_idx += n_files_per_process[proc_idx]
             pool = multiprocessing.Pool(processes=N_PROC)
             pool.starmap(xml_bib_worker, xml_bib_args)
             pool.close()
@@ -837,16 +740,8 @@ if __name__ == '__main__':
         # invert images of each corpus in parallel
         for corpus in [d for d in os.listdir(CAS2_DIR) if os.path.isdir(os.path.join(CAS2_DIR, d))]:
             file_id_list = os.listdir(os.path.join(CAS2_DIR, corpus))
-            n_files_per_process = [math.floor(len(file_id_list) / N_PROC)] * N_PROC
-            for i in range(len(file_id_list) % N_PROC):
-                n_files_per_process[i] += 1
 
-            curr_idx = 0
-            invert_img_mp_args = list()
-            for proc_idx in range(N_PROC):
-                invert_img_mp_args.append((file_id_list[curr_idx:curr_idx + n_files_per_process[proc_idx]],
-                                     os.path.join(CAS1_DIR, corpus)))
-                curr_idx += n_files_per_process[proc_idx]
+            invert_img_mp_args = mp_setup(file_id_list, (os.path.join(CAS1_DIR, corpus),), N_PROC)
 
             pool = multiprocessing.Pool(processes=N_PROC)
             pool.starmap(invert_img_worker, invert_img_mp_args)
