@@ -3,12 +3,13 @@ import logging
 import re
 import shutil
 import os
+import multiprocessing
 
 import PyPDF2 as PyPDF2
 from PyPDF2.generic import TextStringObject
 from PyPDF2.pdf import ContentStream, b_, FloatObject, NumberObject
 from PyPDF2.utils import u_
-from utils import mp_setup
+from multiprocess_utils import mp_setup
 
 
 def get_fulltext_from_pdfs(pdfs_urls):
@@ -175,16 +176,15 @@ def convert_pdf2txt(files_dict, input_path, output_path, n_proc):
         if not os.path.isdir(os.path.join(output_path, corpus)):
             os.mkdir(os.path.join(output_path, corpus))
 
-        if len(files_dict) > n_proc:
+        if len(files_dict[corpus]) > n_proc:
             pdf2txt_mp_args = mp_setup(files_dict[corpus],
                                        (os.path.join(input_path, corpus), os.path.join(output_path, corpus)), n_proc)
             pool = multiprocessing.Pool(processes=n_proc)
-            pool.starmap(pdf2text_worker, pdf2txt_mp_args)
+            pool.starmap(pdf2txt_worker, pdf2txt_mp_args)
             pool.close()
             pool.join()
         else:
-            pdf2txt_worker(os.path.join(input_path, corpus), os.path.join(output_path, corpus),
-                           files_dict[corpus])
+            pdf2txt_worker(files_dict[corpus], os.path.join(input_path, corpus), os.path.join(output_path, corpus))
 
 
 if __name__ == '__main__':

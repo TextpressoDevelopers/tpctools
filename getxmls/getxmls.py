@@ -3,6 +3,7 @@ import time
 import tarfile
 import urllib.request
 import multiprocessing
+import shutil
 
 
 def get_newxml_list(ftp_mount_path, newxml_list_file):

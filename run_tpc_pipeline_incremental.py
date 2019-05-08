@@ -15,7 +15,8 @@ from getxmls.getxmls import get_newxml_list, download_xmls
 from getbib.download_abstract import get_abstracts
 from getbib.make_bib import create_bib
 from pdf2text.pdf2text import convert_pdf2txt
-from utils import mp_setup
+from multiprocess_utils import mp_setup, cas1_worker, cas1_xml_worker, cas2_worker, cas2_xml_worker,\
+                               gzip_worker, gunzip_worker
 
 
 default_config = {
@@ -27,6 +28,7 @@ default_config = {
     "TMP_DIR": "/data/textpresso/tmp",
     "FTP_MNTPNT": "/mnt/pmc_ftp",
     "INDEX_DIR": "/data/textpresso/luceneindex",
+    "DB_DIR": "/data2/textpresso/db",
     "N_PROC": 1,
     "EXCLUDE_STEPS": "",
     "TEST": False,
@@ -53,6 +55,8 @@ def set_argument_parser(config):
                         help="ftp mount point for pmcoa papers")
     parser.add_argument("-i", "--index-dir", action='store', default='',
                         help="directory for the lucene index")
+    parser.add_argument("-d", "--db-dir", action='store', default='',
+                        help="directory for lucene index db")
     parser.add_argument("-P", "--num-proc", action='store', default='',
                         help="maximum number of parallel processes")
     parser.add_argument("-e", "--exclude-step", action='store', default='',
@@ -62,104 +66,72 @@ def set_argument_parser(config):
     parser.add_argument("-test", "--test", action='store_true', default=False,
                         help="if True, run in test mode")
     args = parser.parse_args()
+
+    # if there is no user input for directory and it is in test mode
+    # change the directory name to prevent overwriting
+    if args.test:
+        config["TEST"] = args.test
+
     if args.pdf_dir:
         config["PDF_DIR"] = args.pdf_dir
+    elif args.test:
+        config["PDF_DIR"] = config["PDF_DIR"] + "_test"
+
     if args.xml_dir:
         config["XML_DIR"] = args.xml_dir
+    elif args.test:
+        config["XML_DIR"] = config["XML_DIR"] + "_test"
+
     if args.txt_dir:
         config["TXT_DIR"] = args.txt_dir
+    elif args.test:
+        config["TXT_DIR"] = config["TXT_DIR"] + "_test"
+
     if args.cas1_dir:
         config["CAS1_DIR"] = args.cas1_dir
+    elif args.test:
+        config["CAS1_DIR"] = config["CAS1_DIR"] + "_test"
+
     if args.cas2_dir:
         config["CAS2_DIR"] = args.cas2_dir
+    elif args.test:
+        config["CAS2_DIR"] = config["CAS2_DIR"] + "_test"
+
     if args.tmp_dir:
         config["TMP_DIR"] = args.tmp_dir
+    elif args.test:
+        config["TMP_DIR"] = config["TMP_DIR"] + "_test"
+
     if args.ftp_dir:
         config["FTP_MNTPNT"] = args.ftp_dir
+    elif args.test:
+        config["FTP_MNTPNT"] = config["FTP_MNTPNT"] + "_test"
+
     if args.index_dir:
         config["INDEX_DIR"] = args.index_dir
+    elif args.test:
+        config["INDEX_DIR"] = config["INDEX_DIR"] + "_test"
+
+    if args.db_dir:
+        config["DB_DIR"] = args.db_dir
+    elif args.test:
+        config["DB_DIR"] = config["DB_DIR"] + "_test"
+
     if args.num_proc:
         config["N_PROC"] = int(args.num_proc)
     if args.exclude_step:
         config["EXCLUDE_STEPS"] = args.exclude_step
-    if args.test:
-        config["TEST"] = args.test
-
-
-def cas1_worker(tmp_file_idx, corpus, input_dir, file_format):
-    """
-    Worker to be used for processing pdf/txt/xml to tpcas file with multiprocessing
-    :param tmp_file_idx: idx of the tmp_file to read the ids from
-    :param corpus: name of the corpus
-    :param input_dir: PDF_DIR, XML_DIR, or TXT_DIR
-    :param file_format: 1 if PDF, 2 if XML, 3 if TXT
-    """
-    corpus = '\ '.join(corpus.strip().split(" "))
-    input_folder = os.path.join(input_dir, corpus) + '/'
-    output_folder = corpus + '/'
-    dirlist_file = "/tmp/tmplist_{}.txt".format(tmp_file_idx)
-    command = 'articles2cas -i {} -l {} -o {} -t {} -p'.format(input_folder, dirlist_file, output_folder, file_format)
-    os.system(command)
-
-
-def cas1_xml_worker(tmp_file_idx, input_dir):
-    dirlist_file = "/tmp/tmplist_{}.txt".format(tmp_file_idx)
-    command = 'articles2cas -i {} -l {} -t 2 -o PMCOA -p'.format(input_dir, dirlist_file)
-    os.system(command)
-
-
-def cas2_worker(corpus_list, input_path, output_path):
-    for corpus in corpus_list:
-        corpus = '\ '.join(corpus.strip().split(" "))
-        command = ("runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "
-                   "{} {}").format(os.path.join(input_path, corpus), os.path.join(output_path, corpus))
-        os.system(command)
-
-
-def cas2_xml_worker(subdir, input_path, output_path):
-    command = ("runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "
-               "{} {}").format(os.path.join(input_path, subdir), output_path)
-    os.system(command)
-
-
-def gzip_worker(file_list, path, type):
-    """
-    Worker to be used for compressing .tpcas files
-    :param file_list: list of files to compress - file_id for tpcas1, file_id.tpcas for tpcas2
-    :param path: path to the corpus of the target files to be compressed
-    :param type: 1 if cas1, 2 if cas2, 3 if .nxml
-    """
-    assert type in {1, 2, 3}
-    for file in file_list:
-        if type == 1:
-            target_file = os.path.join(path, file, file + '.tpcas')
-        elif type == 2 or type == 3:
-            target_file = os.path.join(path, file)
-        print(target_file)
-        if type == 1 or type == 2:  # tpcas
-            if target_file.endswith('.tpcas') and os.path.isfile(target_file):
-                subprocess.check_call(['gzip', '-f', target_file])
-        elif type == 3:  # nxml
-            if target_file.endswith('.nxml') and os.path.isfile(target_file):
-                subprocess.check_call(['gzip', '-f', target_file])
-
-
-def gunzip_worker(zipped_file_list, path):
-    for filename in zipped_file_list:
-        tpcas_file = os.path.join(path, filename)
-        if os.path.isfile(tpcas_file):
-            subprocess.check_call(['gunzip', tpcas_file])
 
 
 def generate_tpcas1(input_dir, file_format, n_proc):
     """
     Generates tpcas1 files
     :param input_dir: PDF_DIR, XML_DIR, or TXT_DIR
-    :param file_format: 1 if PDF, 2 if XML, 3 if TXT
+    :param file_format: 1 if PDF, 2 if XML, 3 if TXT - only 1 and 3 used. xml in different function
     :param n_proc: number of processes to run in parallel
     """
     os.chdir(CAS1_DIR)
-    print("Using {} processes".format(n_proc))
+
     for corpus in [d for d in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, d))]:
         print("processing {}".format(corpus))
         corpus_file_list = os.listdir(os.path.join(input_dir, corpus))
@@ -178,8 +150,15 @@ def generate_tpcas1(input_dir, file_format, n_proc):
 
 
 def generate_xml_tpcas1(input_dir, xml_list_file, n_proc):
-    print("Using {} processes".format(n_proc))
+    """
+    Generates xml tpcas1 files
+    :param input_dir: XML_DIR
+    :param xml_list_file: file that stores the list of nxml files to be processed
+    :param n_proc: number of processes to run in parallel
+    """
     os.chdir(CAS1_DIR)
+
+    # read the list of xml files to be be processed from input file
     file_list = list()
     with open(xml_list_file, 'r') as fpin:
         line = fpin.readline()
@@ -205,11 +184,10 @@ def generate_xml_tpcas1(input_dir, xml_list_file, n_proc):
 def generate_tpcas2(corpus_list, n_proc, input_dir, output_dir):
     """
     Generates tpcas-2 files using multiprocessing
-    :param corpus_list:
-    :param n_proc:
-    :param input_dir:
-    :param output_dir:
-    :return:
+    :param corpus_list: list of corpus to be processed
+    :param n_proc: number of processes to run in parallel
+    :param input_dir: path where the tpcas-1 files are stored at
+    :param output_dir: path where the tpcas-2 files are generated to
     """
     cas2_mp_args = mp_setup(corpus_list, (input_dir, output_dir), n_proc)
 
@@ -220,27 +198,37 @@ def generate_tpcas2(corpus_list, n_proc, input_dir, output_dir):
 
 
 def generate_xml_tpcas2(n_proc, input_dir, output_dir):
+    """
+    Generates tpcas-2 xml files using multiprocessing
+    :param n_proc: number of processes to run in parallel
+    :param input_dir: path where the tpcas-1 files are stored at
+    :param output_dir: path where the tpcas-2 files are generated to
+    """
     cas2_mp_args = list()
+
+    # all the files are allocated into n_proc folders to be used for multiprocessing
     for subdir in [d for d in os.listdir(input_dir)
                    if os.path.isdir(os.path.join(input_dir, d))]:
         cas2_mp_args.append((subdir, input_dir, output_dir))
+
     pool = multiprocessing.Pool(processes=n_proc)
     pool.starmap(cas2_xml_worker, cas2_mp_args)
     pool.close()
     pool.join()
 
 
-def compress_tpcas(input_dir, n_proc, type, is_xml=False, target_corpus=None):
+def compress_tpcas(input_dir, n_proc, cas_type, is_xml=False, target_corpus=None):
     """
-    Compresses .tpcas files in input_dir in parallel using n_proc cpus
-    :param input_dir: for type 1 - directory of the corpus
-                      for type 2 - directory where .tpcas files are located at
-    :param n_proc: number of processes to use
-    :param type: 1 if cas1, 2 if cas2
+    Compresses .tpcas files in input_dir to .tpcas.gz using multiprocessing
+    :param input_dir: for cas_type 1 - directory of the corpus
+                      for cas_type 2 - directory where .tpcas files are located at
+    :param n_proc: number of processes to run in parallel
+    :param cas_type: 1 if cas1, 2 if cas2
     :param is_xml: True if compressing xml tpcas, False if not
     :param target_corpus: specific target corpus to gzip
     """
-    assert type == 1 or type == 2
+    assert cas_type == 1 or cas_type == 2
+
     for corpus in [d for d in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, d))]:
         if is_xml and corpus != 'xml':
             continue
@@ -249,7 +237,7 @@ def compress_tpcas(input_dir, n_proc, type, is_xml=False, target_corpus=None):
 
         tpcas_file_list = os.listdir(os.path.join(input_dir, corpus))
 
-        gzip_mp_args = mp_setup(tpcas_file_list, (os.path.join(input_dir, corpus), type), n_proc)
+        gzip_mp_args = mp_setup(tpcas_file_list, (os.path.join(input_dir, corpus), cas_type), n_proc)
 
         # run gzip_worker on multiprocess
         pool = multiprocessing.Pool(processes=n_proc)
@@ -268,10 +256,12 @@ if __name__ == '__main__':
     TMP_DIR = default_config["TMP_DIR"]
     FTP_MNTPNT = default_config["FTP_MNTPNT"]
     INDEX_DIR = default_config["INDEX_DIR"]
+    DB_DIR = default_config["DB_DIR"]
     N_PROC = default_config["N_PROC"]
     EXCLUDE_STEPS = default_config["EXCLUDE_STEPS"]
     TEST_MODE = default_config["TEST"]
 
+    # set environment variable
     if 'LD_LIBRARY_PATH' in os.environ:
         os.environ['LD_LIBRARY_PATH'] = "{}:/usr/local/lib".format(os.environ['LD_LIBRARY_PATH'])
     else:
@@ -281,12 +271,12 @@ if __name__ == '__main__':
     logfile_fp = tempfile.NamedTemporaryFile()
     removedpdf_list_fp = tempfile.NamedTemporaryFile()
 
-    # for testing use actual files not temporary files
+    # add configuration if running in test mode
     if TEST_MODE:
         print("running in testing mode")
 
-    newxml_list_file = os.path.join(XML_DIR, "newxml_list.txt")
-    diffxml_list_file = os.path.join(XML_DIR, "diff_list.txt")
+    newxml_list_file = os.path.join(XML_DIR, "newxml_list.txt")  # list of new xml files
+    diffxml_list_file = os.path.join(XML_DIR, "diff_list.txt")  # list of xml files that have changed
     newxml_local_list_file = os.path.join(XML_DIR, "newxml_local_list.txt")  # list of path to new xml files
 
     excluded_steps = EXCLUDE_STEPS.split(',')
@@ -312,11 +302,9 @@ if __name__ == '__main__':
         newxml_id_list = []  # list of paper ids to be downloaded
 
         if os.path.isfile(os.path.join(XML_DIR, "current_filelist.txt")):
-            # delete previous versions and get list of updated/new files
+            # obtain the difference between original xml list and new xml list
             newxml_list_text = open(newxml_list_file, 'r').readlines()
             current_filelist_text = open(os.path.join(XML_DIR, "current_filelist.txt")).readlines()
-
-            # obtain the difference between original xml list and new xml list
             with open(diffxml_list_file, 'w') as fpout:
                 for line in difflib.unified_diff(current_filelist_text, newxml_list_text):
                     line = line.strip()
@@ -326,6 +314,8 @@ if __name__ == '__main__':
                         newxml_id_list.append(line.split()[-1].split('/')[-1][:-7])
                         fpout.write(line[1:] + '\n')
             print("newxml id list: ", newxml_id_list)
+
+            # delete previous versions and get a list of updated/new files
             for newxml_file_id in newxml_id_list:
                 if os.path.isdir(os.path.join(XML_DIR, newxml_file_id)) and newxml_file_id != '':
                     shutil.rmtree(os.path.join(XML_DIR, newxml_file_id), ignore_errors=True)
@@ -352,7 +342,7 @@ if __name__ == '__main__':
                             newxml_id_list.append(line.split()[-1].split('/')[-1][:-7])
                         line = newxml_list_fp.readline()
 
-        # remove empty files from diff list
+        # remove empty files from diffxml_list_file by rewriting the file
         shutil.move(diffxml_list_file, os.path.join(XML_DIR, "diff_list_temp.txt"))
         with open(diffxml_list_file, 'w') as fpout:
             with open(os.path.join(XML_DIR, "diff_list_temp.txt"), 'r') as fpin:
@@ -379,7 +369,8 @@ if __name__ == '__main__':
                 fpout.write(os.path.join(XML_DIR, newxml_id) + '\n')
 
         # 1.1.4 compress nxml and put images in a separate directory
-        # obtain list of nxml file names
+
+        # obtain list of nxml file names and rename the .nxml files to PMC Id
         nxml_file_list = list()  # list of file_id/nxml_file_name
         for newxml_id in newxml_id_list:
             for nxml_file in os.listdir(os.path.join(XML_DIR, newxml_id)):
@@ -436,10 +427,9 @@ if __name__ == '__main__':
 
         # 2.1 Generate TPCAS-1 files from PDF files
 
-        # obtain all the folder names in PDF_DIR then create tpcas1 folders for every corpus
-        # folders correspond to corpus
+        # Obtain all the folder names in PDF_DIR then create tpcas1 folders for every corpus
+        # folder names correspond to corpus names
         os.makedirs(CAS1_DIR, exist_ok=True)
-
         for folder in [d for d in os.listdir(PDF_DIR) if os.path.isdir(os.path.join(PDF_DIR, d))]:
             os.makedirs(os.path.join(CAS1_DIR, folder), exist_ok=True)
 
@@ -467,7 +457,6 @@ if __name__ == '__main__':
 
         # 2.1.2 Convert PDF to TXT file for files of missing tpcas and generate tpcas-1
 
-        print(missing_files_dict)
         print("Number of failures")
         for corpus in missing_files_dict:
             print("{}: {}".format(corpus, len(missing_files_dict[corpus])))
@@ -475,8 +464,12 @@ if __name__ == '__main__':
         convert_pdf2txt(missing_files_dict, PDF_DIR, TXT_DIR, N_PROC)
 
         # assume there are more txt files than N_PROC
-        generate_tpcas1(TXT_DIR, 3, N_PROC)  # convert txt files to cas1 files
-        compress_tpcas(CAS1_DIR, N_PROC, 1)
+        if sum([len(missing_files_dict[corpus]) for corpus in missing_files_dict]) < N_PROC:
+            n_proc = 1
+        else:
+            n_proc = N_PROC
+        generate_tpcas1(TXT_DIR, 3, n_proc)  # convert txt files to cas1 files
+        compress_tpcas(CAS1_DIR, n_proc, 1)
 
         # move newly converted cas1 to tmp files
         for corpus in missing_files_dict:
@@ -488,7 +481,7 @@ if __name__ == '__main__':
                     shutil.copy(cas_file, os.path.join(TMP_DIR, 'tpcas-1', corpus))
 
         # 2.2 Generate TPCAS-1 from XML FILES
-
+        print("Generating tpcas-1 of xml files")
         # remove old versions
         with open(newxml_local_list_file, 'r') as fpin:
             line = fpin.readline()
@@ -509,7 +502,7 @@ if __name__ == '__main__':
                 line = line.strip()
                 if line != '':
                     file_id = line.split('/')[-1]
-                    shutil.rmtree(os.path.join(CAS1_DIR, "PMCOA", file_id, "images"))
+                    shutil.rmtree(os.path.join(CAS1_DIR, "PMCOA", file_id, "images"), ignore_errors=True)
                     os.symlink(os.path.join(XML_DIR, file_id, "images"),
                                os.path.join(CAS1_DIR, 'PMCOA', file_id, "images"))
                 line = fpin.readline()
@@ -639,8 +632,8 @@ if __name__ == '__main__':
                 os.makedirs(os.path.join(CAS2_DIR, corpus, file_id), exist_ok=True)
                 # create symlink to images folder of CAS1
                 if not os.path.islink(os.path.join(CAS2_DIR, corpus, file_id, "images")):
-                    os.system("ln -s {} {}".format(os.path.join(CAS1_DIR, corpus, file_id, "images"),
-                               os.path.join(CAS2_DIR, corpus, file_id, "images")))
+                    os.symlink(os.path.join(CAS1_DIR, corpus, file_id, "images"),
+                               os.path.join(CAS2_DIR, corpus, file_id, "images"))
                 # copy .tpcas.gz files to CAS2_DIR
                 if not os.path.isfile(os.path.join(CAS2_DIR, corpus, file_id, file_id + ".tpcas.gz")):
                     shutil.copy(os.path.join(TMP_DIR, "tpcas-2", corpus, file_id + ".tpcas.gz"),
@@ -676,11 +669,11 @@ if __name__ == '__main__':
         # 4.1 download bib info for pdfs
         print("Donwloading bib info for pdf files...")
         os.makedirs("/usr/local/textpresso/celegans_bib", exist_ok=True)
-        """
+
         # download bibs for C. elegans
         subprocess.check_call(['download_pdfinfo.pl', '/usr/local/textpresso/celegans_bib/'])
         subprocess.check_call(['extract_pdfbibinfo.pl', '/usr/local/textpresso/celegans_bib/'])
-
+        
         print("Generating bib files...")
         os.chdir(CAS2_DIR)
 
@@ -700,7 +693,7 @@ if __name__ == '__main__':
         # the paper ids in the corpora directory needs to be the pmid
         get_abstracts(os.path.join(CAS2_DIR, "xenbase"), 300)
         create_bib(os.path.join(CAS2_DIR, "xenbase"), "/home/daniel/xenbase_info")
-        """
+
         # 4.2 xml
         cas_dir_to_process = os.path.join(CAS2_DIR, "PMCOA")
         if os.path.isdir(os.path.join(TMP_DIR, "tpcas-2", "xml")):
@@ -763,14 +756,21 @@ if __name__ == '__main__':
         if os.path.isdir(INDEX_DIR):
             INDEX_DIR_CUR = INDEX_DIR + "_new"
 
+        # obtain the total number of cas files to process
+        n_cas_files = 0
+        for corpus in os.listdir(CAS2_DIR):
+            n_cas_files += len(os.listdir(os.path.join(CAS2_DIR, corpus)))
+        # n_files_per_index = math.ceil(n_cas_files / N_PROC)
+        n_files_per_index = 2000
+        if n_files_per_index > 100000:
+            n_files_per_index = 100000
+
         os.makedirs(os.path.join(INDEX_DIR_CUR, "db"), exist_ok=True)
         # assume there is no space in CAS2_DIR and INDEX_DIR_CUR
-        os.system("create_single_index.sh -m 100000 {} {}".format(CAS2_DIR, INDEX_DIR_CUR))
-
-        # TODO: test with lower papers_per_subindex
+        os.system("create_single_index.sh -m {} {} {}".format(n_files_per_index, CAS2_DIR, INDEX_DIR_CUR))
 
         os.chdir(INDEX_DIR_CUR)
-        num_subidx_step = int(math.ceil(PAPERS_PER_SUBINDEX / 100000))
+        num_subidx_step = int(math.ceil(PAPERS_PER_SUBINDEX / n_files_per_index))
         first_idx_in_master = 0
         final_counter = 0
         last_idx_in_master = num_subidx_step
@@ -787,21 +787,20 @@ if __name__ == '__main__':
             first_idx_in_master = first_idx_in_master + num_subidx_step
             last_idx_in_master = last_idx_in_master + num_subidx_step
             final_counter += 1
+
+        print("Saving ids to db...")
+        INDEX_DIR_CUR = INDEX_DIR
         os.system("saveidstodb -i {}".format(INDEX_DIR_CUR))
         for root, dirs, files in os.walk(os.path.join(INDEX_DIR_CUR, "db")):
             for d in dirs:
                 os.chmod(os.path.join(root, d), 777)
             for f in files:
                 os.chmod(os.path.join(root, f), 777)
-        os.system("rm -rf /data2/textpresso/db.bk")
-        os.system("mv {} {}".format("/data2/textpresso/db", "/data2/textpresso/db.bk"))
-        os.system("mv {} {}".format(os.path.join(INDEX_DIR_CUR, "db"), "/data2/textpresso/db"))
-        os.system("ln -s {} {}".format("/data2/textpresso/db",
-                                       os.path.join(INDEX_DIR_CUR, "db")))
-        if os.path.isdir("{}_new".format(INDEX_DIR)):
-            os.system("rm -rf {}.bk".format(INDEX_DIR))
-            os.system("mv {} {}.bk".format(INDEX_DIR, INDEX_DIR))
-            os.system("mv {} {}".format(INDEX_DIR_CUR, INDEX_DIR))
+        shutil.rmtree(DB_DIR + ".bk", ignore_errors=True)
+        if os.path.exists(DB_DIR):
+            shutil.move(DB_DIR, DB_DIR + ".bk")
+        shutil.move(os.path.join(INDEX_DIR, "db"), DB_DIR)
+        os.symlink(DB_DIR, os.path.join(INDEX_DIR, "db"))
     else:
         print("Skipping index...")
 
@@ -855,3 +854,7 @@ if __name__ == '__main__':
 
     logfile_fp.close()
     removedpdf_list_fp.close()
+
+    os.remove(newxml_list_file)
+    os.remove(diffxml_list_file)
+    os.remove(newxml_local_list_file)
