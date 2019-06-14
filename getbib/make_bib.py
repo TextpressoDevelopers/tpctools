@@ -219,7 +219,8 @@ def create_bib(corpus_dir, info_file_dir):
             print("Error while processing paper " + paper_id)
 
     for paper_id in paper_id_list:
-        os.remove(os.path.join(corpus_dir, paper_id, paper_id + '_abstract.xml'))
+        if os.path.exists(os.path.join(corpus_dir, paper_id, paper_id + '_abstract.xml')):
+            os.remove(os.path.join(corpus_dir, paper_id, paper_id + '_abstract.xml'))
     print("completed creating .bib files for {}".format(corpus_dir))
 
 
