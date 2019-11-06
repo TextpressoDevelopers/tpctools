@@ -74,7 +74,8 @@ foreach my $entry (@array2) {
 
 
 
-my $dbh = DBI->connect ( "dbi:Pg:dbname=testdb;host=131.215.52.76", "acedb", "") or die "Cannot connect to database!\n"; 
+#my $dbh = DBI->connect ( "dbi:Pg:dbname=testdb;host=131.215.52.76", "acedb", "") or die "Cannot connect to database!\n"; 
+my $dbh = DBI->connect ( "dbi:Pg:dbname=muellerdb;host=131.215.52.92", "mueller", "goldturtle") or die "Cannot connect to database!\n"; 
 my $result = $dbh->prepare( "SELECT * FROM pap_curation_flags WHERE pap_curation_flags = 'non_nematode'");
 $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
 my %non_nematode = ();

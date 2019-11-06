@@ -28,7 +28,8 @@ def download_pdfs(args_delete_old, args_log_file, args_log_level, args_out_dir):
     except FileExistsError:
         logging.warning("Directories already exist")
     non_nematode_papers = set()
-    conn = psycopg2.connect("dbname='testdb' user='acedb' host='131.215.52.76'")
+#    conn = psycopg2.connect("dbname='testdb' user='acedb' host='131.215.52.76'")
+    conn = psycopg2.connect("dbname='muellerdb' user='mueller' host='131.215.52.92' password='goldturtle'")
     cur = conn.cursor()
     cur.execute("""SELECT * FROM pap_curation_flags WHERE pap_curation_flags = 'non_nematode'""")
     rows = cur.fetchall()

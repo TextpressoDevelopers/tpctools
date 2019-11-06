@@ -16,8 +16,7 @@ function usage {
     echo "  -i --index-dir    directory for the lucene index"
     echo "  -P --num-proc     maximum number of parallel processes"
     echo "  -e --exclude-step do not execute the steps specified by a comma separated list of step names. Step names "
-    echo "                    are: download_pdf,download_xml,cas1,cas2,bib,index,invert_img,remove_invalidated,
-                              remove_temp."
+    echo "                    are: download_pdf,download_xml,cas1,cas2,bib,index,invert_img,remove_invalidated,remove_temp."
     echo "  -h --help         display help"
     exit 1
 }
@@ -284,9 +283,16 @@ then
 
     # 3.2 APPLY UIMA ANALYSIS
     # create dir structure if it does not exist
-    mkdir -p "${TMP_DIR}/tpcas-2/xml"
+#    mkdir -p "${TMP_DIR}/tpcas-2/xml"
+    for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
+    do
+        mkdir -p ${TMP_DIR}/tpcas-2/xml/${subdir}
+        mkdir -p ${TMP_DIR}/tpcas-2/xml/1.${subdir}
+    done
     for folder in */ ; do
+#        mkdir -p ${TMP_DIR}/tpcas-2/"${folder}"
         mkdir -p ${TMP_DIR}/tpcas-2/"${folder}"
+        mkdir -p ${TMP_DIR}/tpcas-2/"1.${folder}"
     done
 
     # decompress all tpcas files in tmp dir before processing them
@@ -295,16 +301,62 @@ then
     # remove old versions
     awk -F"/" '{print $NF}' ${newxml_local_list} | xargs -I {} rm -rf "${CAS2_DIR}/PMCOA/{}"
 
-    for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
+    # prepare pcrelations table in postgres
+    echo "drop table pcrelations" | psql www-data
+    TABLELIST=$(echo "select tablename from pg_tables" | psql www-data | grep pcrelations)
+    FIRSTTABLE=$(echo $TABLELIST | cut -f 1 -d " ");
+    echo "create table pcrelations as (select * from $FIRSTTABLE) with no data" | psql www-data
+    for i in $TABLELIST
     do
-        runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/xml/${subdir} ${TMP_DIR}/tpcas-2/xml &
+	echo Inserting $i
+	echo "insert into pcrelations select * from $i" | psql www-data
     done
-    wait
 
-    # UIMA analysis for pdf files
-    for folder in */ ; do
-        runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-1/${folder}" "${TMP_DIR}/tpcas-2/${folder}"
+    # prepare tpontology table in postgres
+    echo "drop table tpontology" | psql www-data
+    TABLELIST=$(echo "select tablename from pg_tables" | psql www-data | grep tpontology)
+    FIRSTTABLE=$(echo $TABLELIST | cut -f 1 -d " ");
+    echo "create table tpontology as (select * from $FIRSTTABLE) with no data" | psql www-data
+    for i in $TABLELIST
+    do
+        echo "delete from tpontology" | psql www-data
+	echo Inserting $i
+	echo "insert into tpontology select * from $i" | psql www-data
+        # UIMA analysis for nxml files
+        for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
+        do
+            if [ "$i" == "$FIRSTTABLE" ]
+            then
+                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/xml/${subdir} ${TMP_DIR}/tpcas-2/xml/${subdir}
+            else
+                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-2/xml/1.${subdir} ${TMP_DIR}/tpcas-2/xml/${subdir}
+            fi
+        done
+        # UIMA analysis for pdf files
+        for folder in */ ; do
+            if [ "$i" == "$FIRSTTABLE" ]
+            then
+                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-1/${folder}" "${TMP_DIR}/tpcas-2/${folder}"
+            else
+                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-2/1.${folder}" "${TMP_DIR}/tpcas-2/${folder}"
+            fi
+        done
+        wait
+        for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
+        do  
+            cp -r ${TMP_DIR}/tpcas-2/xml/${subdir}/* ${TMP_DIR}/tpcas-2/xml/1.${subdir}/.
+        done
+        for folder in */
+        do
+            cp -r ${TMP_DIR}/tpcas-2/"${folder}"/* ${TMP_DIR}/tpcas-2/1."${folder}"/.
+        done
     done
+    rm -rf ${TMP_DIR}/tpcas-2/1.*/
+    rm -rf ${TMP_DIR}/tpcas-2/xml/1.*/
+    mv ${TMP_DIR}/tpcas-2/xml/*/* ${TMP_DIR}/tpcas-2/xml/.
+    rmdir ${TMP_DIR}/tpcas-2/xml/*/
+    echo "drop table tpontology" | psql www-data
+    echo "drop table pcrelations" | psql www-data
 
     # 3.3 COMPRESS THE RESULTS
     find -L ${TMP_DIR}/tpcas-2 -name *.tpcas -print0 | xargs -0 -n 1 -P ${N_PROC} gzip
@@ -333,7 +385,6 @@ then
     done
 
     # 3.4.2 pdf
-
     cat ${newpdf_list} | awk -F"/" '{print $(NF-2)"/"$(NF-1)}' | while read line
     do
         dir_name=$(echo ${line} | awk -F"/" '{print $(NF)}')
@@ -382,6 +433,10 @@ then
         wait
         rm -rf ${tempdir}
     fi
+
+    # 4.3 xenbase
+    download_abstract.py --tpcas2_dir /data/textpresso/tpcas-2/xenbase/ --chunk_size 300
+    make_bib.py --tpcas2_dir /data/textpresso/tpcas-2/xenbase/
 fi
 
 #################################################################################
@@ -443,10 +498,10 @@ then
     done
     saveidstodb -i ${INDEX_DIR_CUR}
     chmod -R 777 "${INDEX_DIR_CUR}/db"
-    rm -rf /data2/textpresso/db.bk
-    mv /data2/textpresso/db /data2/textpresso/db.bk
-    mv "${INDEX_DIR_CUR}/db" /data2/textpresso/db
-    ln -s /data2/textpresso/db "${INDEX_DIR_CUR}/db"
+    rm -rf /data/textpresso/db.bk
+    mv /data/textpresso/db /data/textpresso/db.bk
+    mv "${INDEX_DIR_CUR}/db" /data/textpresso/db
+    ln -s /data/textpresso/db "${INDEX_DIR_CUR}/db"
     if [[ -d "${INDEX_DIR}_new" ]]
     then
         rm -rf "${INDEX_DIR}.bk"

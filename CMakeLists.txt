@@ -89,5 +89,5 @@ install(PROGRAMS cas2index/create_index_multi_literatures.sh cas2index/create_si
         getpdfs/getpdfs.py getbibinfoforpdffromserver/download_pdfinfo.pl
         getbibinfoforpdffromserver/extract_pdfbibinfo.pl useruploads/run_userupload_pipeline_incremental.sh
         pgdumps/dump.sh articles2cas/convertallarticles2cas.sh curationtasks/unpublished_pipeline.sh
-        getbib/getallbibfiles.sh
+        getbib/getallbibfiles.sh getbib/download_abstract.py getbib/make_bib.py
         DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

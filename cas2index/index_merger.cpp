@@ -39,7 +39,7 @@ void print_help() {
 
 void mergeIndex(const string& indexpath1, const string& indexpath2, const string& optimization, bool caseSensitive) {
 
-    cout << "L138" << endl;
+    //cout << "L138" << endl;
     String IndexDir1 = StringUtils::toString(indexpath1.c_str());
     IndexWriterPtr writer;
     if (caseSensitive) {
@@ -52,19 +52,19 @@ void mergeIndex(const string& indexpath1, const string& indexpath2, const string
                                         IndexWriter::MaxFieldLengthUNLIMITED);
     }
     cout << "maxDoc(): " << writer->maxDoc() << endl;
-    cout << "L143" << endl;
+    //cout << "L143" << endl;
     String IndexDir2 = StringUtils::toString(indexpath2.c_str());
-    wcout << "L146 " << IndexDir2.c_str() << endl;
+    //wcout << "L146 " << IndexDir2.c_str() << endl;
     FSDirectoryPtr dir2 = FSDirectory::open(IndexDir2);
     Collection<DirectoryPtr> indexes = Collection<DirectoryPtr>::newInstance(0);
     indexes.add(dir2);
     // cout << "L152 size " << indexes.size() << endl;
     writer->addIndexesNoOptimize(indexes);
-    cout<<"L165" << endl;
+    //cout<<"L165" << endl;
     if (optimization == "yes") {
         writer->optimize();
     }
-    cout<<"L166" << endl;
+    //cout<<"L166" << endl;
     writer->close();
 }
 

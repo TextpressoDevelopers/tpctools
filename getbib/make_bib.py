@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import re
 import shutil
@@ -6,7 +8,7 @@ from lxml import etree
 import argparse
 
 TPCAS2_XENBASE_DIR = "/data/textpresso/tpcas-2/xenbase"
-INFO_FILE_DIR = "/home/daniel/xenbase_info"
+INFO_FILE_DIR = "/data/textpresso/xenbase_info"
 
 
 def format_date(date_str):

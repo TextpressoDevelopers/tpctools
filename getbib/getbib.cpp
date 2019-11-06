@@ -49,9 +49,6 @@ void addCasFile(const char* pszInput, string indexdescriptor) {
     std::cout << gzfile << std::endl;
     if(gzfile.find("tpcas.gz") == std::string::npos)
         return;
-
-
-
     //    string doneflagpath = "/tmp/indexerdone/"+ gzfile;
     //    cout << "done flag is " << doneflagpath << endl;
     //    if(exists(doneflagpath))
@@ -63,14 +60,14 @@ void addCasFile(const char* pszInput, string indexdescriptor) {
     //    doneflag << "" << endl;
     //    doneflag.close();
 
-    cout << "L43 addcas file " << pszInput << endl;
+    //cout << "L43 addcas file " << pszInput << endl;
     //const char * descriptor = TPCAS2LINDEXDESCRIPTOR;
     const char * descriptor = indexdescriptor.c_str();
 
 
 
     string tpcasfile = uncompressGzip(gzfile);
-    std::cout << "L52 tpcasfile " << tpcasfile << std::endl;
+    //std::cout << "L52 tpcasfile " << tpcasfile << std::endl;
 
     try {
 
@@ -104,24 +101,22 @@ void addCasFile(const char* pszInput, string indexdescriptor) {
         try {
             /* initialize from an xmicas */
 
-            std::cout << "L69 consumer" << tpcasfile << std::endl;
+            //std::cout << "L69 consumer" << tpcasfile << std::endl;
             XMLCh* native = XMLString::transcode(tpcasfile.c_str());
             LocalFileInputSource fileIS(native);
             XMLString::release(&native);
 
-            std::cout << "L71 tpcas " << tpcasfile.c_str() << std::endl;
+            //std::cout << "L71 tpcas " << tpcasfile.c_str() << std::endl;
             uima::XmiDeserializer::deserialize(fileIS, *cas, true);
 
             std::string filename(tpcasfile);
-            std::cout << "L77 " << filename << std::endl;
+            //std::cout << "L77 " << filename << std::endl;
 
             /* process the CAS */
 
             // ((uima::AnalysisEngine*) pEngine)->processAndOutputNewCASes(*cas);
 
             ((uima::AnalysisEngine*) pEngine)->process(*cas);
-
-
 
         } catch (uima::Exception e) {
             uima::ErrorInfo errInfo = e.getErrorInfo();
@@ -130,8 +125,6 @@ void addCasFile(const char* pszInput, string indexdescriptor) {
         } catch (std::logic_error e) {
             std::cerr << "Logic error" << std::endl;
         }
-
-
 
         /* call collectionProcessComplete */
         utErrorId = pEngine->collectionProcessComplete();
