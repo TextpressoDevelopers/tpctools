@@ -190,28 +190,29 @@ if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "cas1") == "0" ]]
 then
     echo "Generating CAS1 files ..."
 
-    # 2.1 PDF FILES
-    cd ${PDF_DIR}
-    # obtain all the folder names in PDF_DIR then create tpcas1 folders for every corpus
-    for folder in */ ; do
-        mkdir -p "${CAS1_DIR}/${folder}"
-    done
-    cd ${CAS1_DIR}
-
-    # generate TPCAS-1 for every corpus
-    for folder in */ ; do
-        echo ${folder}
-        num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep "${PDF_DIR}/${folder}" ${newpdf_list} | wc -l) / ${N_PROC}))")
-        n_lines_to_tail=$(grep "${PDF_DIR}/${folder}" ${newpdf_list} | wc -l)
-        for ((i=1; i<=${N_PROC}; i++))
-        do
-            grep "${PDF_DIR}/${folder}" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
-            articles2cas -i "${PDF_DIR}/${folder}" -l /tmp/tmplist_$i.txt -t 1 -o "${folder}" -p &
-            n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
-        done
-        wait
-        rm /tmp/tmplist_*.txt
-    done
+# temporarily disabled
+#    # 2.1 PDF FILES
+#    cd ${PDF_DIR}
+#    # obtain all the folder names in PDF_DIR then create tpcas1 folders for every corpus
+#    for folder in */ ; do
+#        mkdir -p "${CAS1_DIR}/${folder}"
+#    done
+#    cd ${CAS1_DIR}
+#
+#    # generate TPCAS-1 for every corpus
+#    for folder in */ ; do
+#        echo ${folder}
+#        num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep "${PDF_DIR}/${folder}" ${newpdf_list} | wc -l) / ${N_PROC}))")
+#        n_lines_to_tail=$(grep "${PDF_DIR}/${folder}" ${newpdf_list} | wc -l)
+#        for ((i=1; i<=${N_PROC}; i++))
+#        do
+#            grep "${PDF_DIR}/${folder}" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
+#            articles2cas -i "${PDF_DIR}/${folder}" -l /tmp/tmplist_$i.txt -t 1 -o "${folder}" -p &
+#            n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
+#        done
+#        wait
+#        rm /tmp/tmplist_*.txt
+#    done
 
     # 2.2 XML FILES
 
@@ -306,26 +307,36 @@ then
     TABLELIST=$(echo "select tablename from pg_tables" | psql www-data | grep pcrelations)
     FIRSTTABLE=$(echo $TABLELIST | cut -f 1 -d " ");
     echo "create table pcrelations as (select * from $FIRSTTABLE) with no data" | psql www-data
-    for i in $TABLELIST
+    for j in $TABLELIST
     do
-	echo Inserting $i
-	echo "insert into pcrelations select * from $i" | psql www-data
+	echo Inserting $j
+	echo "insert into pcrelations select * from $j" | psql www-data
     done
 
     # prepare tpontology table in postgres
     echo "drop table tpontology" | psql www-data
     TABLELIST=$(echo "select tablename from pg_tables" | psql www-data | grep tpontology)
     FIRSTTABLE=$(echo $TABLELIST | cut -f 1 -d " ");
+    TABLEARRAY=($TABLELIST)
     echo "create table tpontology as (select * from $FIRSTTABLE) with no data" | psql www-data
-    for i in $TABLELIST
+    FIRSTTIME=1
+    i=0
+    while (( i < ${#TABLEARRAY[@]}))
     do
-        echo "delete from tpontology" | psql www-data
-	echo Inserting $i
-	echo "insert into tpontology select * from $i" | psql www-data
+	echo "delete from tpontology" | psql www-data
+	while
+	    if [[ ${TABLEARRAY[$i]} != "" ]]
+	    then
+		echo Inserting ${TABLEARRAY[$i]}
+		echo "insert into tpontology select * from ${TABLEARRAY[$i]}" | psql www-data
+	    fi
+	    i=$[i+1]
+	    (( i % 4 != 0))
+	do true; done
         # UIMA analysis for nxml files
         for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
         do
-            if [ "$i" == "$FIRSTTABLE" ]
+            if (( $FIRSTTIME > 0 ))
             then
                 runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/xml/${subdir} ${TMP_DIR}/tpcas-2/xml/${subdir}
             else
@@ -334,25 +345,31 @@ then
         done
         # UIMA analysis for pdf files
         for folder in */ ; do
-            if [ "$i" == "$FIRSTTABLE" ]
+            if (( $FIRSTTIME > 0 ))
             then
                 runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-1/${folder}" "${TMP_DIR}/tpcas-2/${folder}"
             else
                 runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-2/1.${folder}" "${TMP_DIR}/tpcas-2/${folder}"
             fi
         done
-        wait
+	FIRSTTIME=0
         for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
         do  
-            cp -r ${TMP_DIR}/tpcas-2/xml/${subdir}/* ${TMP_DIR}/tpcas-2/xml/1.${subdir}/.
+            mv ${TMP_DIR}/tpcas-2/xml/${subdir}/* ${TMP_DIR}/tpcas-2/xml/1.${subdir}/.
         done
         for folder in */
         do
-            cp -r ${TMP_DIR}/tpcas-2/"${folder}"/* ${TMP_DIR}/tpcas-2/1."${folder}"/.
+            mv ${TMP_DIR}/tpcas-2/"${folder}"/* ${TMP_DIR}/tpcas-2/1."${folder}"/.
         done
     done
-    rm -rf ${TMP_DIR}/tpcas-2/1.*/
-    rm -rf ${TMP_DIR}/tpcas-2/xml/1.*/
+    for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
+    do  
+        mv ${TMP_DIR}/tpcas-2/xml/1.${subdir}/* ${TMP_DIR}/tpcas-2/xml/${subdir}/.
+    done
+    for folder in */
+    do
+        mv ${TMP_DIR}/tpcas-2/1."${folder}"/* ${TMP_DIR}/tpcas-2/"${folder}"/.
+    done
     mv ${TMP_DIR}/tpcas-2/xml/*/* ${TMP_DIR}/tpcas-2/xml/.
     rmdir ${TMP_DIR}/tpcas-2/xml/*/
     echo "drop table tpontology" | psql www-data
