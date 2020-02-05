@@ -6,6 +6,8 @@ apt-get -y install poppler-utils
 BODY="/data/textpresso/raw_files/pdf/C. elegans"
 SUPP="/data/textpresso/raw_files/pdf/C. elegans Supplementals"
 COMB="/data/textpresso/raw_files/pdf/C. elegans Combined"
+
+SUPPCOVER="/data/textpresso/tpctools/SupplMatCoverSheet.pdf"
 #IFS=$(echo -en '\b\n')
 IFS=$'\n'
 #
@@ -15,8 +17,14 @@ rsync -av $BODY/ $COMB/
 #
 
 for i in $(ls $BODY)
-do j=$(ls $SUPP/$i*/*.pdf)
-   pdfunite $BODY/$i/$i.pdf $j $COMB/$i/$i.pdf
-   touch -r $BODY/$i/$i.pdf $COMB/$i/$i.pdf
+do
+    j=$(ls $SUPP/$i*/*.pdf 2>/dev/null)
+    echo "J " "$j"
+    if [[ "$j" != "" ]]
+    then
+	echo "BOING"
+	pdfunite $BODY/$i/$i.pdf $SUPPCOVER $j $COMB/$i/$i.pdf
+	touch -r $BODY/$i/$i.pdf $COMB/$i/$i.pdf
+    fi
 done
 #
