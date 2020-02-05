@@ -65,38 +65,37 @@ else
     done
     
     # check for newer files in each pdf folder, make processing list
-    for folder in */;
+    for folder in *;
     do
 	echo "${folder}"
 	counter=0
-	t=$(mktemp);
-	rm -f $t.*.list
+	rm -f /tmp/"${folder}".*.list
 	for i in "${folder}"/*
 	do
 	    if [[ $i -nt "${CAS1_DIR}/$i" ]]
 	    then
 		d=${i#"${folder}"/}
 		bin=$(($counter % $N_PROC))
-		echo $d >> "$t.$bin.list"
+		echo $d >> "/tmp/${folder}.$bin.list"
 		counter=$(($counter+1))
 	    fi
 	done
     done
     # run article2cas, with CAS1_DIR as CWD
     cd ${CAS1_DIR}
-    for folder in */
+    for folder in *
     do
 	for ((j=0; j<${N_PROC}; j++))
 	do
-	    if [[ -f "$t.$j.list" ]]
+	    if [[ -f "/tmp/${folder}.$j.list" ]]
 	    then
-		articles2cas -i "${PDF_DIR}/${folder}" -l "$t.$j.list" -t 1 -o "${folder}" -p &
+		articles2cas -i "${PDF_DIR}/${folder}" -l "/tmp/${folder}.$j.list" -t 1 -o "${folder}" -p &
 	    fi
 	done
 	wait
-	rm -f $t.*.list    
+	# gzip all tpcas files
+	find ${CAS1_DIR} -name "*tpcas" -print0 | xargs -0 -n 8 -P 8 pigz 2>/dev/null
+	rm -f /tmp/"${folder}".*.list
     done
-    # gzip all tpcas files
-    find ${CAS1_DIR} -name "*tpcas" -print0 | xargs -0 -n 8 -P 8 pigz 2>/dev/null
     rm ${LOCKFILE}
 fi
