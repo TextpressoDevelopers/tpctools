@@ -190,29 +190,28 @@ if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "cas1") == "0" ]]
 then
     echo "Generating CAS1 files ..."
 
-# temporarily disabled
-#    # 2.1 PDF FILES
-#    cd ${PDF_DIR}
-#    # obtain all the folder names in PDF_DIR then create tpcas1 folders for every corpus
-#    for folder in */ ; do
-#        mkdir -p "${CAS1_DIR}/${folder}"
-#    done
-#    cd ${CAS1_DIR}
-#
-#    # generate TPCAS-1 for every corpus
-#    for folder in */ ; do
-#        echo ${folder}
-#        num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep "${PDF_DIR}/${folder}" ${newpdf_list} | wc -l) / ${N_PROC}))")
-#        n_lines_to_tail=$(grep "${PDF_DIR}/${folder}" ${newpdf_list} | wc -l)
-#        for ((i=1; i<=${N_PROC}; i++))
-#        do
-#            grep "${PDF_DIR}/${folder}" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
-#            articles2cas -i "${PDF_DIR}/${folder}" -l /tmp/tmplist_$i.txt -t 1 -o "${folder}" -p &
-#            n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
-#        done
-#        wait
-#        rm /tmp/tmplist_*.txt
-#    done
+    # 2.1 PDF FILES
+    cd ${PDF_DIR}
+    # obtain all the folder names in PDF_DIR then create tpcas1 folders for every corpus
+    for folder in */ ; do
+        mkdir -p "${CAS1_DIR}/${folder}"
+    done
+    cd ${CAS1_DIR}
+
+    # generate TPCAS-1 for every corpus
+    for folder in */ ; do
+        echo ${folder}
+        num_papers_to_process_together=$(python3 -c "from math import ceil; print(ceil($(grep "${PDF_DIR}/${folder}" ${newpdf_list} | wc -l) / ${N_PROC}))")
+        n_lines_to_tail=$(grep "${PDF_DIR}/${folder}" ${newpdf_list} | wc -l)
+        for ((i=1; i<=${N_PROC}; i++))
+        do
+            grep "${PDF_DIR}/${folder}" ${newpdf_list} | awk -F"/" '{print $NF}' | sed 's/.pdf//g' | tail -n ${n_lines_to_tail} | head -n ${num_papers_to_process_together} > /tmp/tmplist_$i.txt
+            articles2cas -i "${PDF_DIR}/${folder}" -l /tmp/tmplist_$i.txt -t 1 -o "${folder}" -p &
+            n_lines_to_tail=$(($n_lines_to_tail - $num_papers_to_process_together))
+        done
+        wait
+        rm /tmp/tmplist_*.txt
+    done
 
     # 2.2 XML FILES
 
@@ -284,14 +283,12 @@ then
 
     # 3.2 APPLY UIMA ANALYSIS
     # create dir structure if it does not exist
-#    mkdir -p "${TMP_DIR}/tpcas-2/xml"
     for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
     do
         mkdir -p ${TMP_DIR}/tpcas-2/xml/${subdir}
         mkdir -p ${TMP_DIR}/tpcas-2/xml/1.${subdir}
     done
     for folder in */ ; do
-#        mkdir -p ${TMP_DIR}/tpcas-2/"${folder}"
         mkdir -p ${TMP_DIR}/tpcas-2/"${folder}"
         mkdir -p ${TMP_DIR}/tpcas-2/"1.${folder}"
     done
@@ -331,46 +328,49 @@ then
 		echo "insert into tpontology select * from ${TABLEARRAY[$i]}" | psql www-data
 	    fi
 	    i=$[i+1]
-	    (( i % 4 != 0))
+	    s=$(echo "select count(*) from tpontology" | psql www-data )
+	    j=$(echo $s | cut -f 3 -d " ")
+   	    (( j < 5000000)) && (( i < ${#TABLEARRAY[@]}))
 	do true; done
         # UIMA analysis for nxml files
         for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
         do
             if (( $FIRSTTIME > 0 ))
             then
-                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/xml/${subdir} ${TMP_DIR}/tpcas-2/xml/${subdir}
+                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/xml/${subdir} ${TMP_DIR}/tpcas-2/xml/${subdir} &
             else
-                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-2/xml/1.${subdir} ${TMP_DIR}/tpcas-2/xml/${subdir}
+                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-2/xml/1.${subdir} ${TMP_DIR}/tpcas-2/xml/${subdir} &
             fi
         done
+	wait
         # UIMA analysis for pdf files
         for folder in */ ; do
             if (( $FIRSTTIME > 0 ))
             then
-                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-1/${folder}" "${TMP_DIR}/tpcas-2/${folder}"
+                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-1/${folder}" "${TMP_DIR}/tpcas-2/${folder}" &
             else
-                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-2/1.${folder}" "${TMP_DIR}/tpcas-2/${folder}"
+                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-2/1.${folder}" "${TMP_DIR}/tpcas-2/${folder}" &
             fi
         done
+	wait
 	FIRSTTIME=0
         for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
-        do  
-            mv ${TMP_DIR}/tpcas-2/xml/${subdir}/* ${TMP_DIR}/tpcas-2/xml/1.${subdir}/.
+        do
+	    find ${TMP_DIR}/tpcas-2/xml/${subdir} -name "*tpcas" | xargs -I {} -n 1 -P ${N_PROC} mv {} ${TMP_DIR}/tpcas-2/xml/1.${subdir}/.
         done
         for folder in */
         do
-            mv ${TMP_DIR}/tpcas-2/"${folder}"/* ${TMP_DIR}/tpcas-2/1."${folder}"/.
+	    find ${TMP_DIR}/tpcas-2/"${folder}" -name "*tpcas" | xargs -I {} -n 1 -P ${N_PROC} mv {} ${TMP_DIR}/tpcas-2/1."${folder}"/.
         done
     done
     for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
     do  
-        mv ${TMP_DIR}/tpcas-2/xml/1.${subdir}/* ${TMP_DIR}/tpcas-2/xml/${subdir}/.
+	find ${TMP_DIR}/tpcas-2/xml/1.${subdir} -name "*tpcas" | xargs -I {} -n 1 -P ${N_PROC} mv {} ${TMP_DIR}/tpcas-2/xml/.
     done
     for folder in */
     do
-        mv ${TMP_DIR}/tpcas-2/1."${folder}"/* ${TMP_DIR}/tpcas-2/"${folder}"/.
+	find ${TMP_DIR}/tpcas-2/1."${folder}" -name "*tpcas" | xargs -I {} -n 1 -P ${N_PROC} mv {} ${TMP_DIR}/tpcas-2/"${folder}"/.
     done
-    mv ${TMP_DIR}/tpcas-2/xml/*/* ${TMP_DIR}/tpcas-2/xml/.
     rmdir ${TMP_DIR}/tpcas-2/xml/*/
     echo "drop table tpontology" | psql www-data
     echo "drop table pcrelations" | psql www-data
