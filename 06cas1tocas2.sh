@@ -62,7 +62,6 @@ else
     
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
     export PATH=$PATH:/usr/local/bin
-    
     echo "Generating CAS2 files ..."
     #
     rm -rf ${TMP_DIR}/tpcas-1
@@ -70,16 +69,16 @@ else
     
     # prepare files to be processed
     cd ${CAS1_DIR}
-    worktodo=0
-    for folder in *
+    echo 0 > /tmp/worktodo
+    find . -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' folder
     do
 	echo "${folder}"
 	counter=0
 	t=$(mktemp);
 	rm -f $t.*.list
-	for i in "${folder}"/*
+	find "${folder}" -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' i
 	do
-	    if [[ $i -nt "${CAS2_DIR}/$i" ]]
+	    if [[ "$i" -nt "${CAS2_DIR}/$i" ]]
 	    then
 		d=${i#"${folder}"/}
 		bin=$(($counter % $N_PROC))
@@ -98,15 +97,15 @@ else
 		    if [[ -e "$f" ]]
 		    then
 			ln -s "$f" ${TMP_DIR}/tpcas-1/"${folder}.$j"/$k.tpcas.gz
-			worktodo=1
+			echo 1 > /tmp/worktodo
 		    fi
 		done
 	    fi
 	done
 	rm -f $t.*.list
     done
+    worktodo=$(cat /tmp/worktodo)
     # perform lexical annotation
-    
     if (( $worktodo > 0 ))
     then
 	#
@@ -120,7 +119,6 @@ else
 	    echo Inserting $j
 	    echo "insert into pcrelations select * from $j" | psql www-data
 	done
-	
 	cd ${TMP_DIR}/tpcas-1    
 	# prepare tpontology table in postgres
 	echo "drop table tpontology" | psql www-data
@@ -142,25 +140,23 @@ else
 		i=$((i+1))
 		s=$(echo "select count(*) from tpontology" | psql www-data )
 		j=$(echo $s | cut -f 3 -d " ")
-   		(( j < 5000000)) && (( i < ${#TABLEARRAY[@]}))
+   		(( j < 2500000)) && (( i < ${#TABLEARRAY[@]}))
 	    do true; done
 	    # UIMA analysis for all folders
-	    
 	    fcount=0
-	    for folder in *
+	    find . -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' folder
 	    do
 		# create dir structure if it does not exist
 		mkdir -p ${TMP_DIR}/tpcas-2/"${folder}"
-		mkdir -p ${TMP_DIR}/tpcas-2/"1.${folder}"
+		mkdir -p ${TMP_DIR}/tpcas-2/"1.${folder#./}"
 		# decompress all tpcas files in tmp dir before processing them
 		find "${folder}" -name "*.tpcas.gz" | xargs -n 8 -P 8 -I "{}" gunzip -f {}
 		if (( $FIRSTTIME > 0 ))
 		then
 		    runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-1/${folder}" "${TMP_DIR}/tpcas-2/${folder}" &
 		else
-		    runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-2/1.${folder}" "${TMP_DIR}/tpcas-2/${folder}" &
+		    runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-2/1.${folder#./}" "${TMP_DIR}/tpcas-2/${folder}" &
 		fi
-		
 		fcount=$((fcount+1))
 		if [[ $(($fcount % ${N_PROC})) == 0 ]]
 		then
@@ -168,29 +164,28 @@ else
 		fi
 	    done
 	    wait
+	    find . -name "*.tpcas" | xargs -n 8 -P 8 -I "{}" rm {}
 	    FIRSTTIME=0
-	    for folder in *
+	    find . -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' folder
 	    do
-		find ${TMP_DIR}/tpcas-2/"${folder}" -name "*tpcas" | xargs -I {} -n 1 -P ${N_PROC} mv {} ${TMP_DIR}/tpcas-2/1."${folder}"/.
-		rm -rf  "${TMP_DIR}/tpcas-1/${folder}"
+		find ${TMP_DIR}/tpcas-2/"${folder}" -name "*tpcas" | xargs -I {} -n 1 -P ${N_PROC} mv {} ${TMP_DIR}/tpcas-2/1."${folder#./}"/.
 	    done
 	done
-	cd ${TMP_DIR}/tpcas-2
-	for folder in *
+	find . -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' folder
 	do
-	    find ${TMP_DIR}/tpcas-2/1."${folder}" -name "*tpcas" | xargs -I {} -n 1 -P ${N_PROC} mv {} ${TMP_DIR}/tpcas-2/"${folder}"/.
-	    rm -rf ${TMP_DIR}/tpcas-2/1."${folder}"
+	    find ${TMP_DIR}/tpcas-2/1."${folder#./}" -name "*tpcas" | xargs -I {} -n 1 -P ${N_PROC} mv {} ${TMP_DIR}/tpcas-2/"${folder}"/.
+	    rm -rf ${TMP_DIR}/tpcas-2/1."${folder#./}"
 	done
 	echo "drop table pcrelations" | psql www-data
 	echo "drop table tpontology" | psql www-data
 	
 	# COMPRESS THE RESULTS
-	find -L . -name *.tpcas -print0 | xargs -0 -n 8 -P ${N_PROC} pigz
-	
+	find -L ${TMP_DIR}/tpcas-2 -name *.tpcas -print0 | xargs -0 -n 8 -P ${N_PROC} pigz
 	# COPY TPCAS2 DIRS IN TMPDIR TO TPCAS-2
-	for folder in *
+	cd ${TMP_DIR}/tpcas-2
+	find . -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' folder
 	do
-	    for i in "${folder}"/*
+	    find "${folder}" -mindepth 1 -maxdepth 1 -print0 | while read -d $'\0' i
 	    do
 		dirname=$(basename $(echo "${i#${folder}}" | sed 's/.tpcas.gz//'))
 		casfolder=$(echo "${folder}" | sed 's/\.[0-9]\+$//')
@@ -207,14 +202,13 @@ else
 	# remove dirs in ${CAS2_DIR} that do not have corresponding dir in ${CAS1_DIR}
 	# or ${XML_DIR}.
 	cd ${CAS2_DIR}
-	for folder in */;
+	find . -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' folder
 	do
-	    for i in "${folder}"/*
+	    find "${folder}" -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' i
 	    do
-		d=${i#"${folder}"/}
-		if [[ ! -d `find ${CAS1_DIR} -name "$d"` ]]
+		if [[ ! -d `find ${CAS1_DIR} -name "$i"` ]]
 		then
-		    rm -rf "$i"
+		    rm -rf "${folder}/$i"
 		fi
 	    done
 	done
