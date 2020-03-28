@@ -19,10 +19,8 @@ rsync -av $BODY/ $COMB/
 for i in $(ls $BODY)
 do
     j=$(ls $SUPP/$i*/*.pdf 2>/dev/null)
-    echo "J " "$j"
     if [[ "$j" != "" ]]
     then
-	echo "BOING"
 	pdfunite $BODY/$i/$i.pdf $SUPPCOVER $j $COMB/$i/$i.pdf
 	touch -r $BODY/$i/$i.pdf $COMB/$i/$i.pdf
     fi
