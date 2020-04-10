@@ -1,0 +1,6 @@
+Scanning dependencies of target curationtasks
+make[2]: *** No rule to make target 'curationtasks/main.cpp', needed by 'CMakeFiles/curationtasks.dir/curationtasks/main.cpp.o'.  Stop.
+CMakeFiles/Makefile2:67: recipe for target 'CMakeFiles/curationtasks.dir/all' failed
+make[1]: *** [CMakeFiles/curationtasks.dir/all] Error 2
+Makefile:127: recipe for target 'all' failed
+make: *** [all] Error 2

@@ -1,8 +1,4 @@
-cmake-build*
-.idea/
-**/build/
-**/dist/
-**/nbproject/
+build*/
 *~
-/tpctl.config
-*.pyc
+*pycache*
+cmake-build*/

@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="100">
+  <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
+    <logicalFolder name="Modules"
+                   displayName="Modules"
+                   projectFiles="true"
+                   root="/usr/share/cmake-3.5/Modules">
+      <itemPath>/usr/share/cmake-3.5/Modules/CheckFunctionExists.c</itemPath>
+    </logicalFolder>
+    <df root="." name="0">
+      <df name="articles2cas">
+        <in>Utils.cpp</in>
+        <in>articles2cas.cpp</in>
+      </df>
+      <df name="cas2index">
+        <in>cas2index.cpp</in>
+        <in>index_merger.cpp</in>
+        <in>saveidstodb.cpp</in>
+        <in>update_corpus_counter.cpp</in>
+      </df>
+      <df name="CMYKInverter">
+        <in>CMYKModifier.cpp</in>
+        <in>main.cpp</in>
+      </df>
+      <df name="curationtasks">
+        <in>main.cpp</in>
+      </df>
+      <df name="diffhtml">
+        <in>main.cpp</in>
+      </df>
+      <df name="getbib">
+        <in>getbib.cpp</in>
+        <in>getbib4nxml.cpp</in>
+        <in>getbib4nxmlUtils.cpp</in>
+        <in>getbibUtils.cpp</in>
+      </df>
+      <df name="lucene">
+        <in>CaseSensitiveAnalyzer.cpp</in>
+      </df>
+      <df name="ppm2jpg">
+        <in>main.cpp</in>
+      </df>
+      <df name="printbibfromnxmlorcasfile">
+        <in>main.cpp</in>
+      </df>
+    </df>
+    <logicalFolder name="ExternalFiles"
+                   displayName="Important Files"
+                   projectFiles="false"
+                   kind="IMPORTANT_FILES_FOLDER">
+      <itemPath>CMakeLists.txt</itemPath>
+      <itemPath>Makefile</itemPath>
+      <itemPath>nbproject/private/launcher.properties</itemPath>
+    </logicalFolder>
+  </logicalFolder>
+  <sourceFolderFilter>^(nbproject)$</sourceFolderFilter>
+  <sourceRootList>
+    <Elem>.</Elem>
+  </sourceRootList>
+  <projectmakefile>Makefile</projectmakefile>
+  <confs>
+    <conf name="Default" type="0">
+      <toolsSet>
+        <compilerSet>default</compilerSet>
+        <dependencyChecking>false</dependencyChecking>
+        <rebuildPropChanged>false</rebuildPropChanged>
+      </toolsSet>
+      <flagsDictionary>
+        <element flagsID="0" commonFlags="-std=gnu++11"/>
+      </flagsDictionary>
+      <codeAssistance>
+      </codeAssistance>
+      <makefileType>
+        <makeTool>
+          <buildCommandWorkingDir>build-default</buildCommandWorkingDir>
+          <buildCommand>${MAKE} -f Makefile -j 8</buildCommand>
+          <cleanCommand>${MAKE} -f Makefile clean</cleanCommand>
+          <executablePath></executablePath>
+          <cTool>
+            <incDir>
+              <pElem>CMakeFiles/CMakeTmp</pElem>
+            </incDir>
+            <preprocessorList>
+              <Elem>CHECK_FUNCTION_EXISTS=pthread_create</Elem>
+            </preprocessorList>
+          </cTool>
+          <ccTool>
+            <incDir>
+              <pElem>/usr/include/apr-1.0</pElem>
+              <pElem>/usr/include/ImageMagick-6</pElem>
+              <pElem>/usr/include/x86_64-linux-gnu/ImageMagick-6</pElem>
+              <pElem>/usr/include/x86_64-linux-gnu</pElem>
+              <pElem>/usr/include/OpenEXR</pElem>
+              <pElem>/usr/include/opencv</pElem>
+              <pElem>/usr/local/include/textpresso</pElem>
+              <pElem>../libtpc</pElem>
+              <pElem>build-default</pElem>
+            </incDir>
+            <preprocessorList>
+              <Elem>BOOST_NO_CXX11_SCOPED_ENUMS</Elem>
+              <Elem>cimg_use_jpeg</Elem>
+              <Elem>cimg_use_magick</Elem>
+              <Elem>cimg_use_opencv</Elem>
+              <Elem>cimg_use_openexr</Elem>
+              <Elem>cimg_use_png</Elem>
+              <Elem>cimg_use_tiff</Elem>
+              <Elem>cimg_use_xrandr</Elem>
+              <Elem>cimg_use_xshm</Elem>
+              <Elem>cimg_use_zlib</Elem>
+            </preprocessorList>
+          </ccTool>
+        </makeTool>
+        <preBuild>
+          <preBuildCommandWorkingDir>build-default</preBuildCommandWorkingDir>
+          <preBuildCommand>${CMAKE} -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=${IDE_CC} -DCMAKE_CXX_COMPILER=${IDE_CXX} -DCMAKE_C_FLAGS_DEBUG="-g3 -gdwarf-2" -DCMAKE_CXX_FLAGS_DEBUG="-g3 -gdwarf-2" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..</preBuildCommand>
+        </preBuild>
+      </makefileType>
+      <item path="/usr/share/cmake-3.5/Modules/CheckFunctionExists.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+      </item>
+      <item path="CMYKInverter/CMYKModifier.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="CMYKInverter/main.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="articles2cas/Utils.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="articles2cas/articles2cas.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="cas2index/cas2index.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="cas2index/index_merger.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="cas2index/saveidstodb.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="cas2index/update_corpus_counter.cpp"
+            ex="false"
+            tool="1"
+            flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="curationtasks/main.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="diffhtml/main.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="getbib/getbib.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="getbib/getbib4nxml.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="getbib/getbib4nxmlUtils.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="getbib/getbibUtils.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="lucene/CaseSensitiveAnalyzer.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="ppm2jpg/main.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+      <item path="printbibfromnxmlorcasfile/main.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
+      </item>
+    </conf>
+  </confs>
+</configurationDescriptor>

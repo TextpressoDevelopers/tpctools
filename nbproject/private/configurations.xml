@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="100">
+  <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
+    <df root="." name="0">
+      <df name="__pycache__">
+      </df>
+      <df name="articles2cas">
+        <in>Utils.cpp</in>
+        <in>Utils.h</in>
+        <in>articles2cas.cpp</in>
+      </df>
+      <df name="build">
+        <df name="CMakeFiles">
+          <df name="3.10.2">
+            <df name="CompilerIdC">
+              <df name="tmp">
+              </df>
+              <in>CMakeCCompilerId.c</in>
+            </df>
+            <df name="CompilerIdCXX">
+              <df name="tmp">
+              </df>
+              <in>CMakeCXXCompilerId.cpp</in>
+            </df>
+          </df>
+          <df name="articles2cas.dir">
+            <df name="articles2cas">
+            </df>
+          </df>
+          <df name="cas2index.dir">
+            <df name="cas2index">
+            </df>
+          </df>
+          <df name="CMakeTmp">
+          </df>
+          <df name="cmykinverter.dir">
+            <df name="CMYKInverter">
+            </df>
+          </df>
+          <df name="curationtasks.dir">
+            <df name="curationtasks">
+            </df>
+          </df>
+          <df name="diffhtml.dir">
+            <df name="diffhtml">
+            </df>
+          </df>
+          <df name="getbib.dir">
+            <df name="getbib">
+            </df>
+          </df>
+          <df name="getbib4nxml.dir">
+            <df name="getbib">
+            </df>
+          </df>
+          <df name="indexmerger.dir">
+            <df name="cas2index">
+            </df>
+            <df name="lucene">
+            </df>
+          </df>
+          <df name="ppm2jpg.dir">
+            <df name="ppm2jpg">
+            </df>
+          </df>
+          <df name="printbibfromnxmlorcasfile.dir">
+            <df name="printbibfromnxmlorcasfile">
+            </df>
+          </df>
+          <df name="saveidstodb.dir">
+            <df name="cas2index">
+            </df>
+          </df>
+          <df name="updatecorpuscounter.dir">
+            <df name="cas2index">
+            </df>
+          </df>
+          <in>feature_tests.c</in>
+          <in>feature_tests.cxx</in>
+        </df>
+      </df>
+      <df name="build-default">
+        <df name="CMakeFiles">
+          <df name="3.10.2">
+            <df name="CompilerIdC">
+              <df name="tmp">
+              </df>
+              <in>CMakeCCompilerId.c</in>
+            </df>
+            <df name="CompilerIdCXX">
+              <df name="tmp">
+              </df>
+              <in>CMakeCXXCompilerId.cpp</in>
+            </df>
+          </df>
+          <df name="3.5.1">
+            <df name="CompilerIdC">
+              <in>CMakeCCompilerId.c</in>
+            </df>
+            <df name="CompilerIdCXX">
+              <in>CMakeCXXCompilerId.cpp</in>
+            </df>
+          </df>
+          <df name="articles2cas.dir">
+            <df name="articles2cas">
+            </df>
+          </df>
+          <df name="cas2index.dir">
+            <df name="cas2index">
+            </df>
+          </df>
+          <df name="CMakeTmp">
+          </df>
+          <df name="cmykinverter.dir">
+            <df name="CMYKInverter">
+            </df>
+          </df>
+          <df name="curationtasks.dir">
+            <df name="curationtasks">
+            </df>
+          </df>
+          <df name="diffhtml.dir">
+            <df name="diffhtml">
+            </df>
+          </df>
+          <df name="getbib.dir">
+            <df name="getbib">
+            </df>
+          </df>
+          <df name="getbib4nxml.dir">
+            <df name="getbib">
+            </df>
+          </df>
+          <df name="indexmerger.dir">
+            <df name="cas2index">
+            </df>
+            <df name="lucene">
+            </df>
+          </df>
+          <df name="ppm2jpg.dir">
+            <df name="ppm2jpg">
+            </df>
+          </df>
+          <df name="printbibfromnxmlorcasfile.dir">
+            <df name="printbibfromnxmlorcasfile">
+            </df>
+          </df>
+          <df name="saveidstodb.dir">
+            <df name="cas2index">
+            </df>
+          </df>
+          <df name="updatecorpuscounter.dir">
+            <df name="cas2index">
+            </df>
+          </df>
+          <in>feature_tests.c</in>
+          <in>feature_tests.cxx</in>
+        </df>
+      </df>
+      <df name="cas2index">
+        <in>cas2index.cpp</in>
+        <in>index_merger.cpp</in>
+        <in>saveidstodb.cpp</in>
+        <in>update_corpus_counter.cpp</in>
+      </df>
+      <df name="cmake">
+        <df name="Modules">
+        </df>
+      </df>
+      <df name="cmake-build-release">
+        <df name="CMakeFiles">
+          <df name="3.5.1">
+            <df name="CompilerIdC">
+              <in>CMakeCCompilerId.c</in>
+            </df>
+            <df name="CompilerIdCXX">
+              <in>CMakeCXXCompilerId.cpp</in>
+            </df>
+          </df>
+          <df name="articles2cas.dir">
+            <df name="articles2cas">
+            </df>
+          </df>
+          <df name="cas2index.dir">
+            <df name="cas2index">
+            </df>
+          </df>
+          <df name="CMakeTmp">
+          </df>
+          <df name="cmykinverter.dir">
+            <df name="CMYKInverter">
+            </df>
+          </df>
+          <df name="curationtasks.dir">
+            <df name="curationtasks">
+            </df>
+          </df>
+          <df name="diffhtml.dir">
+            <df name="diffhtml">
+            </df>
+          </df>
+          <df name="getbib.dir">
+            <df name="getbib">
+            </df>
+          </df>
+          <df name="getbib4nxml.dir">
+            <df name="getbib">
+            </df>
+          </df>
+          <df name="indexmerger.dir">
+            <df name="cas2index">
+            </df>
+            <df name="lucene">
+            </df>
+          </df>
+          <df name="ppm2jpg.dir">
+            <df name="ppm2jpg">
+            </df>
+          </df>
+          <df name="printbibfromnxmlorcasfile.dir">
+            <df name="printbibfromnxmlorcasfile">
+            </df>
+          </df>
+          <df name="saveidstodb.dir">
+            <df name="cas2index">
+            </df>
+          </df>
+          <df name="updatecorpuscounter.dir">
+            <df name="cas2index">
+            </df>
+          </df>
+          <in>feature_tests.c</in>
+          <in>feature_tests.cxx</in>
+        </df>
+      </df>
+      <df name="CMYKInverter">
+        <in>CMYKModifier.cpp</in>
+        <in>CMYKModifier.h</in>
+        <in>main.cpp</in>
+      </df>
+      <df name="curationtasks">
+        <in>BatchSearch.cpp</in>
+        <in>BatchSearch.h</in>
+        <in>Postprocessing.cpp</in>
+        <in>Postprocessing.h</in>
+        <in>cmdline.h</in>
+        <in>main.cpp</in>
+      </df>
+      <df name="diffhtml">
+        <in>cmdline.h</in>
+        <in>main.cpp</in>
+      </df>
+      <df name="getbib">
+        <df name="__pycache__">
+        </df>
+        <in>getbib.cpp</in>
+        <in>getbib4nxml.cpp</in>
+        <in>getbib4nxmlUtils.cpp</in>
+        <in>getbib4nxmlUtils.h</in>
+        <in>getbibUtils.cpp</in>
+        <in>getbibUtils.h</in>
+      </df>
+      <df name="getbibinfoforpdffromserver">
+      </df>
+      <df name="getpdfs">
+        <df name="__pycache__">
+        </df>
+      </df>
+      <df name="getxmls">
+        <df name="__pycache__">
+        </df>
+      </df>
+      <df name="lucene">
+        <in>CaseSensitiveAnalyzer.cpp</in>
+        <in>CaseSensitiveAnalyzer.h</in>
+        <in>LazySelector.h</in>
+      </df>
+      <df name="pdf2text">
+        <df name="__pycache__">
+        </df>
+      </df>
+      <df name="pgdumps">
+      </df>
+      <df name="ppm2jpg">
+        <in>main.cpp</in>
+      </df>
+      <df name="printbibfromnxmlorcasfile">
+        <in>cmdline.h</in>
+        <in>main.cpp</in>
+      </df>
+      <df name="useruploads">
+      </df>
+      <in>TextpressoCentralGlobalDefinitions.h</in>
+      <in>TextpressoCentralGlobals.h</in>
+    </df>
+  </logicalFolder>
+  <projectmakefile>Makefile</projectmakefile>
+  <confs>
+    <conf name="Default" type="0">
+      <toolsSet>
+        <developmentServer>localhost</developmentServer>
+        <platform>2</platform>
+      </toolsSet>
+      <compile>
+        <compiledirpicklist>
+          <compiledirpicklistitem>.</compiledirpicklistitem>
+          <compiledirpicklistitem>${AUTO_FOLDER}</compiledirpicklistitem>
+        </compiledirpicklist>
+        <compiledir>${AUTO_FOLDER}</compiledir>
+        <compilecommandpicklist>
+          <compilecommandpicklistitem>${MAKE} ${ITEM_NAME}.o</compilecommandpicklistitem>
+          <compilecommandpicklistitem>${AUTO_COMPILE}</compilecommandpicklistitem>
+        </compilecommandpicklist>
+        <compilecommand>${AUTO_COMPILE}</compilecommand>
+      </compile>
+      <dbx_gdbdebugger version="1">
+        <gdb_pathmaps>
+        </gdb_pathmaps>
+        <gdb_interceptlist>
+          <gdbinterceptoptions gdb_all="false" gdb_unhandled="true" gdb_unexpected="true"/>
+        </gdb_interceptlist>
+        <gdb_options>
+          <DebugOptions>
+          </DebugOptions>
+        </gdb_options>
+        <gdb_buildfirst gdb_buildfirst_overriden="false" gdb_buildfirst_old="false"/>
+      </dbx_gdbdebugger>
+      <nativedebugger version="1">
+        <engine>gdb</engine>
+      </nativedebugger>
+      <runprofile version="9">
+        <runcommandpicklist>
+          <runcommandpicklistitem>"${OUTPUT_PATH}"</runcommandpicklistitem>
+        </runcommandpicklist>
+        <runcommand>"${OUTPUT_PATH}"</runcommand>
+        <rundir>.</rundir>
+        <buildfirst>false</buildfirst>
+        <terminal-type>0</terminal-type>
+        <remove-instrumentation>0</remove-instrumentation>
+        <environment>
+        </environment>
+      </runprofile>
+    </conf>
+  </confs>
+</configurationDescriptor>
