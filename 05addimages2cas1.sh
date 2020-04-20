@@ -15,7 +15,7 @@ function usage {
 XML_DIR="/data/textpresso/raw_files/xml"
 CAS1_DIR="/data/textpresso/tpcas-1"
 N_PROC=1
-LOCKFILE="/data/textpresso/tmp/04xml2cas.lock"
+LOCKFILE="/data/textpresso/tmp/05addimages2cas1.lock"
 if [[ -f "${LOCKFILE}" ]]
 then
     echo $(basename $0) "is already running."
@@ -55,36 +55,16 @@ else
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
     export PATH=$PATH:/usr/local/bin
     
-    echo "Generating CAS1 files ..."
+    echo "Add images CAS1 directories ..."
     
-    mkdir -p ${CAS1_DIR}/PMCOA
-    
-    # check for newer files in each xml folder, make processing list
-    cd ${XML_DIR}
-    counter=0
-    t=$(mktemp);
-    rm -f $t.*.list
+    # add images to tpcas directory
+    cd ${CAS1_DIR}/PMCOA
     for i in *
     do
-	if [[ $i -nt "${CAS1_DIR}/PMCOA/$i" ]]
+	if [[ -d "${XML_DIR}/$i/images" ]]
 	then
-	    bin=$(($counter % $N_PROC))
-	    echo $i >> "$t.$bin.list"
-	    counter=$(($counter+1))
+	    ln -s "${XML_DIR}/$i/images"/* "${CAS1_DIR}/PMCOA/$i/images/." 2>/dev/null
 	fi
     done
-    # run article2cas, with CAS1_DIR as CWD
-    cd ${CAS1_DIR}
-    for ((j=0; j<${N_PROC}; j++))
-    do
-	if [[ -f "$t.$j.list" ]]
-	then
-	    articles2cas -i "${XML_DIR}" -l "$t.$j.list" -t 2 -o "PMCOA" -p &
-	fi
-    done
-    wait
-    rm -f $t.*.list
-    # gzip
-    find ${CAS1_DIR} -name "*tpcas" -print0 | xargs -0 -n 8 -P 8 pigz 2>/dev/null
     rm ${LOCKFILE}
 fi
