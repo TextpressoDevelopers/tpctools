@@ -18,7 +18,7 @@ PDF_DIR="/data/textpresso/raw_files/pdf"
 XML_DIR="/data/textpresso/raw_files/xml"
 CAS1_DIR="/data/textpresso/tpcas-1"
 N_PROC=1
-LOCKFILE="/data/textpresso/tmp/05removecas1.lock"
+LOCKFILE="/data/textpresso/tmp/06removecas1.lock"
 if [[ -f "${LOCKFILE}" ]]
 then
     echo $(basename $0) "is already running."

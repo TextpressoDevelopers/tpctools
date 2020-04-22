@@ -14,7 +14,7 @@ function usage {
 CAS2_DIR="/data/textpresso/tpcas-2"
 INDEX_DIR="/data/textpresso/luceneindex"
 PAPERS_PER_SUBINDEX=1000000
-LOCKFILE="/data/textpresso/tmp/10index.lock"
+LOCKFILE="/data/textpresso/tmp/12index.lock"
 if [[ -f "${LOCKFILE}" ]]
 then
     echo $(basename $0) "is already running."

@@ -13,7 +13,7 @@ function usage {
 
 CAS2_DIR="/data/textpresso/tpcas-2"
 N_PROC=1
-LOCKFILE="/data/textpresso/tmp/07getpmcoabib.lock"
+LOCKFILE="/data/textpresso/tmp/09getpmcoabib.lock"
 if [[ -f "${LOCKFILE}" ]]
 then
     echo $(basename $0) "is already running."

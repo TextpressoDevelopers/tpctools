@@ -18,7 +18,7 @@ CAS1_DIR="/data/textpresso/tpcas-1"
 CAS2_DIR="/data/textpresso/tpcas-2"
 TMP_DIR="/data/textpresso/tmp"
 N_PROC=1
-LOCKFILE="/data/textpresso/tmp/06cas1tocas2.lock"
+LOCKFILE="/data/textpresso/tmp/07cas1tocas2.lock"
 if [[ -f "${LOCKFILE}" ]]
 then
     echo $(basename $0) "is already running."
@@ -195,20 +195,6 @@ else
 		    tpcas_file_name=$(ls "${CAS1_DIR}/${casfolder}/${dirname}"/*.tpcas.gz | head -n1 | awk 'BEGIN{FS="/"}{print $NF}')
 		    ln -s -f "${CAS1_DIR}/${casfolder}/${dirname}/images" "${CAS2_DIR}/${casfolder}/${dirname}/."
 		    mv "$i" "${CAS2_DIR}/${casfolder}/${dirname}/${tpcas_file_name}"
-		fi
-	    done
-	done
-	
-	# remove dirs in ${CAS2_DIR} that do not have corresponding dir in ${CAS1_DIR}
-	# or ${XML_DIR}.
-	cd ${CAS2_DIR}
-	find . -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' folder
-	do
-	    find "${folder}" -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' i
-	    do
-		if [[ ! -d `find ${CAS1_DIR} -name "$i"` ]]
-		then
-		    rm -rf "${folder}/$i"
 		fi
 	    done
 	done
