@@ -60,7 +60,7 @@ else
             getbib4nxml "${CAS2_DIR}/PMCOA" -f ${tempdir}/${file_list} &
     done
 	wait
-	#rm -rf ${tempdir}
+	rm -rf ${tempdir}
     fi
     rm ${LOCKFILE}
 fi

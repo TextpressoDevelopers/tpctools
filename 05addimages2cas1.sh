@@ -63,7 +63,10 @@ else
     do
 	if [[ -d "${XML_DIR}/$i/images" ]]
 	then
-	    ln -s "${XML_DIR}/$i/images"/* "${CAS1_DIR}/PMCOA/$i/images/." 2>/dev/null
+	    if [[ "$(ls -A ${XML_DIR}/$i/images)" ]]
+	    then
+		ln -s "${XML_DIR}/$i/images"/* "${CAS1_DIR}/PMCOA/$i/images/." 2>/dev/null
+	    fi
 	fi
     done
     rm ${LOCKFILE}

@@ -74,7 +74,7 @@ else
 		    mkdir ${XML_DIR}/$d
 		    touch -t 196901010000 ${XML_DIR}/$d
 		    if
-			rsync -a $i ${XML_DIR}/$d/.
+			rsync --timeout=600 -a $i ${XML_DIR}/$d/.
 			tar xfz ${XML_DIR}/$d/$d.tar.gz --exclude="*.pdf" --exclude="*.PDF" \
 			    --exclude="*.mp4" --exclude="*.webm" --exclude="*.flv" \
 			    --exclude="*.avi" --exclude="*.zip" --exclude="*.mov" \
@@ -85,7 +85,7 @@ else
 			rm -f ${XML_DIR}/$d/$d.tar.gz
 			mkdir ${XML_DIR}/$d/images
 			ls ${XML_DIR}/$d | grep -v \.nxml | grep -v images | xargs -I "{}" mv ${XML_DIR}/$d/{} ${XML_DIR}/$d/images/
-			gzip ${XML_DIR}/$d/*.nxml
+			gzip -f ${XML_DIR}/$d/*.nxml
 		    then
 			touch -r $i ${XML_DIR}/$d/
 		    fi
