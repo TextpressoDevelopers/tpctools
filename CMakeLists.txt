@@ -85,7 +85,10 @@ install(TARGETS getbib getbib4nxml cas2index saveidstodb updatecorpuscounter art
         curationtasks diffhtml cmykinverter indexmerger
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 install(PROGRAMS cas2index/create_index_multi_literatures.sh cas2index/create_single_index.sh
-        ppm2jpg/ppm2jpgCas.sh run_tpc_pipeline_incremental.sh
+        ppm2jpg/ppm2jpgCas.sh run_tpc_pipeline_incremental.sh combinepdfs.sh
+        01downloadpdfs.sh 02downloadxmls.sh 03pdf2cas.sh 04xml2cas.sh 05addimages2cas1.sh 
+        06removecas1.sh 07cas1tocas2.sh 08removecas2.sh 09getpmcoabib.sh   
+        10getcelegansbib.sh 11invertimages.sh 12index.sh
         getpdfs/getpdfs.py getbibinfoforpdffromserver/download_pdfinfo.pl
         getbibinfoforpdffromserver/extract_pdfbibinfo.pl useruploads/run_userupload_pipeline_incremental.sh
         pgdumps/dump.sh articles2cas/convertallarticles2cas.sh curationtasks/unpublished_pipeline.sh
