@@ -13,6 +13,7 @@ then
         mkdir -p "${user_dir}/tpcas"
         mkdir -p "${user_dir}/tmp/cas1"
         mkdir -p "${user_dir}/tmp/cas2"
+        mkdir -p "${user_dir}/tmp/tmp"
         mkdir -p "${user_dir}/useruploads/${username}"
         touch "${user_dir}/tpcas/processed_files.txt"
         touch "${user_dir}/tpcas/tokenized_files.txt"
@@ -43,7 +44,7 @@ then
         grep -xf <(sed -e 's/\.[^.]*$//' ${tmpfile}) <(ls "${user_dir}/tpcas/") | xargs -I {} cp "${user_dir}"/tpcas/{}/{}.tpcas  "${user_dir}/tmp/cas1"
         if [[ $(ls "${user_dir}/tmp/cas1/" | wc -l | awk '{print $0}') != "0" ]]
         then
-            runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${user_dir}/tmp/cas1" "${user_dir}/tmp/cas2"
+            uulcas1tocas2.bash "${user_dir}/tmp/cas1" "${user_dir}/tmp/cas2" "${user_dir}/tmp/tmp"
         fi
         if [[ $(ls "${user_dir}/tmp/cas2/" | wc -l) != "0" ]]
         then
