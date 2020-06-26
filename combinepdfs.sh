@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-apt-get -y install poppler-utils
-#
-
 BODY="/data/textpresso/raw_files/pdf/C. elegans"
 SUPP="/data/textpresso/raw_files/pdf/C. elegans Supplementals"
 COMB="/data/textpresso/raw_files/pdf/C. elegans Combined"
