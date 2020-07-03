@@ -2,7 +2,7 @@
 
 BODY="/data/textpresso/raw_files/pdf/C. elegans"
 SUPP="/data/textpresso/raw_files/pdf/C. elegans Supplementals"
-COMB="/data/textpresso/raw_files/pdf/C. elegans Combined"
+COMB="/data/textpresso/raw_files/pdf/C. elegans Main Article and Suppl"
 
 SUPPCOVER="/data/textpresso/tpctools/SupplMatCoverSheet.pdf"
 #IFS=$(echo -en '\b\n')
