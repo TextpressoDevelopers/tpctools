@@ -6,7 +6,6 @@ function usage {
     echo "usage: $(basename $0) [-xcPh]"
     echo "  -x --xml-dir      directory where raw xml files are"
     echo "  -c --cas1-dir     directory where generated cas1 files will be stored"
-    echo "  -P --num-proc     maximum number of parallel processes"
     echo "  -h --help         display help"
     rm ${LOCKFILE}
     exit 1
@@ -14,7 +13,6 @@ function usage {
 
 XML_DIR="/data/textpresso/raw_files/xml"
 CAS1_DIR="/data/textpresso/tpcas-1"
-N_PROC=1
 LOCKFILE="/data/textpresso/tmp/05addimages2cas1.lock"
 if [[ -f "${LOCKFILE}" ]]
 then
@@ -35,11 +33,6 @@ else
 	    -c|--cas1-dir)
 		shift
 		CAS1_DIR="$1"
-		shift
-		;;
-	    -P|--num-proc)
-		shift
-		N_PROC=$1
 		shift
 		;;
 	    -h|--help)
