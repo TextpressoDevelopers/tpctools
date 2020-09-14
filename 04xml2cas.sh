@@ -83,8 +83,8 @@ else
 	fi
     done
     wait
-    rm -f $t.*.list
     # gzip
-    find ${CAS1_DIR} -name "*tpcas" -print0 | xargs -0 -n 8 -P 8 pigz 2>/dev/null
+    find PMCOA -name "*tpcas" -print0 | xargs -0 -n 8 -P 8 pigz 2>/dev/nu\ll
+    rm -f $t.*.list
     rm ${LOCKFILE}
 fi

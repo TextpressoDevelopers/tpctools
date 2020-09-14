@@ -94,7 +94,7 @@ else
 	done
 	wait
 	# gzip all tpcas files
-	find ${CAS1_DIR} -name "*tpcas" -print0 | xargs -0 -n 8 -P 8 pigz 2>/dev/null
+	find "${folder}" -name "*tpcas" -print0 | xargs -0 -n 8 -P 8 pigz 2>/dev/null
 	rm -f /tmp/"${folder}".*.list
     done
     rm ${LOCKFILE}
