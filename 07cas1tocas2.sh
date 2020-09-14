@@ -17,7 +17,7 @@ function usage {
 CAS1_DIR="/data/textpresso/tpcas-1"
 CAS2_DIR="/data/textpresso/tpcas-2"
 TMP_DIR="/data/textpresso/tmp"
-N_PROC=1
+N_PROC=8
 LOCKFILE="/data/textpresso/tmp/07cas1tocas2.lock"
 if [[ -f "${LOCKFILE}" ]]
 then
@@ -128,6 +128,8 @@ else
 	echo "create table tpontology as (select * from $FIRSTTABLE) with no data" | psql www-data
 	FIRSTTIME=1
 	i=0
+	# if we wanted to swap this following while loop with one big folder loop in the interest
+	# of saving disk space, we shouldn't do it because we lose parallelization.
 	while (( i < ${#TABLEARRAY[@]}))
 	do
 	    echo "delete from tpontology" | psql www-data

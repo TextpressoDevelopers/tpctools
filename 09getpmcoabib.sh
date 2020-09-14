@@ -12,7 +12,7 @@ function usage {
 }
 
 CAS2_DIR="/data/textpresso/tpcas-2"
-N_PROC=1
+N_PROC=8
 LOCKFILE="/data/textpresso/tmp/09getpmcoabib.lock"
 if [[ -f "${LOCKFILE}" ]]
 then

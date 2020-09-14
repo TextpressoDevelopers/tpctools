@@ -14,7 +14,7 @@ function usage {
 
 XML_DIR="/data/textpresso/raw_files/xml"
 CAS1_DIR="/data/textpresso/tpcas-1"
-N_PROC=1
+N_PROC=8
 LOCKFILE="/data/textpresso/tmp/04xml2cas.lock"
 if [[ -f "${LOCKFILE}" ]]
 then

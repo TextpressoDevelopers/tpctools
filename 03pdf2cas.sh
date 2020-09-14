@@ -14,7 +14,7 @@ function usage {
 
 PDF_DIR="/data/textpresso/raw_files/pdf"
 CAS1_DIR="/data/textpresso/tpcas-1"
-N_PROC=1
+N_PROC=8
 LOCKFILE="/data/textpresso/tmp/03pdf2cas.lock"
 if [[ -f "${LOCKFILE}" ]]
 then
