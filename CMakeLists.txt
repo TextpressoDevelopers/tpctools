@@ -89,6 +89,9 @@ install(PROGRAMS cas2index/create_index_multi_literatures.sh cas2index/create_si
         01downloadpdfs.sh 02downloadxmls.sh 03pdf2cas.sh 04xml2cas.sh 05addimages2cas1.sh 
         06removecas1.sh 07cas1tocas2.sh 08removecas2.sh 09getpmcoabib.sh   
         10getcelegansbib.sh 11invertimages.sh 12index.sh
+	classifiers/nn/scripts/01computeceleganswordmodel.sh  classifiers/nn/scripts/02createcelegansdocvectors.sh
+	classifiers/nn/scripts/03classify.sh  classifiers/nn/scripts/cleancas.pl  classifiers/nn/scripts/nxmlfil.pl
+	classifiers/nn/scripts/pdfclean.pl  classifiers/nn/scripts/wikifil.pl
         getpdfs/getpdfs.py getbibinfoforpdffromserver/download_pdfinfo.pl
         getbibinfoforpdffromserver/extract_pdfbibinfo.pl useruploads/run_userupload_pipeline_incremental.sh
 	useruploads/uulcas1tocas2.bash
