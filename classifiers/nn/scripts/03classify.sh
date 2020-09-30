@@ -23,7 +23,7 @@ function usage {
     exit 1
 }
 
-LOCKFILE="/data/textpresso/tmp/02createcelegansdocvectors.lock"
+LOCKFILE="/data/textpresso/tmp/03classify.lock"
 if [[ -f "${LOCKFILE}" ]]
 then
     echo $(basename $0) "is already running."
