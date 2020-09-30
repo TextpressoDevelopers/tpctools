@@ -49,6 +49,17 @@ else
 	esac
     done
     echo "Classifying papers..."
-    tpnn-predict.sh $WORK_DIR
+    listnew=$(mktemp)
+    listold=$(mktemp)
+    sort $WORK_DIR/03classify.list.new > $listnew
+    sort $WORK_DIR/03classify.list.last > $listold
+    cp $WORK_DIR/03classify.list.new $WORK_DIR/03classify.list.last
+    rm $WORK_DIR/pool4predictions
+    comm -23 $listnew $listold > $WORK_DIR/pool4predictions
+    rm $listnew $listold
+    if [[ -s "$WORK_DIR/pool4predictions" ]]
+    then
+	tpnn-predict.sh $WORK_DIR
+    fi
     rm ${LOCKFILE}
 fi
