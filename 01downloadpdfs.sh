@@ -47,7 +47,6 @@ else
     mkdir -p ${PDF_DIR}
     getpdfs.py -l ${logfile} -L INFO "${PDF_DIR}"
     combinepdfs.sh
-    rm -rf "${PDF_DIR}/C. elegans" "${PDF_DIR}/C. elegans Supplementals"
     rm ${logfile}
     rm ${LOCKFILE}
 fi

@@ -2,12 +2,12 @@
 
 WORD_MODEL_NAME="/data/textpresso/classifiers/nn/celegans.word.vec"
 DOC_MODEL_NAME="/data/textpresso/classifiers/nn/celegans.doc"
-CAS1_DIR="/data/textpresso/tpcas-1/C. elegans"
+CAS1_DIR="/data/textpresso/tpcas-1"
 
 function usage {
     echo "This script creates document vectors."
     echo
-    echo "usage: $(basename $0) [-mch]"
+    echo "usage: $(basename $0) [-mdch]"
     echo "  -m --model-name      filename of word model (input) [$WORD_MODEL_NAME]."
     echo "  -d --doc-model-name  filename of doc model (output) [$DOC_MODEL_NAME]."
     echo "  -c --cas1-dir        directory where cas1 files are stored [$CAS1_DIR]."

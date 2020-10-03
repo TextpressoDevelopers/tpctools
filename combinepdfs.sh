@@ -2,7 +2,7 @@
 
 BODY="/data/textpresso/raw_files/pdf/C. elegans"
 SUPP="/data/textpresso/raw_files/pdf/C. elegans Supplementals"
-COMB="/data/textpresso/raw_files/pdf/C. elegans Main Article and Suppl"
+COMB="/data/textpresso/raw_files/pdf/C. elegans and Suppl"
 
 SUPPCOVER="/data/textpresso/tpctools/SupplMatCoverSheet.pdf"
 #IFS=$(echo -en '\b\n')
@@ -10,16 +10,35 @@ IFS=$'\n'
 #
 
 mkdir -p $COMB
-rsync -av $BODY/ $COMB/
-#
-
-for i in $(ls $BODY)
+BODYLIST=$(mktemp)
+TARGETLIST=$(mktemp)
+find -L "${BODY}" -name "*.pdf" >${BODYLIST}
+while IFS='' read -r line || [[ -n "$line" ]]
 do
-    j=$(ls $SUPP/$i*/*.pdf 2>/dev/null)
-    if [[ "$j" != "" ]]
+    if [ "$line" -nt "$COMB${line##$BODY}" ]
     then
-	pdfunite $BODY/$i/$i.pdf $SUPPCOVER $j $COMB/$i/$i.pdf
-	touch -r $BODY/$i/$i.pdf $COMB/$i/$i.pdf
+	printf '%s\n' "$line"
+    fi
+done < ${BODYLIST} > ${TARGETLIST}
+rm ${BODYLIST}
+
+
+for i in $(cat ${TARGETLIST})
+do
+    rsync -a "${i}" "$COMB${i##$BODY}"
+
+done
+
+##
+for i in $(cat ${TARGETLIST})
+do
+    d=$(dirname ${i})
+    j=$(ls "$SUPP${d##$BODY}"*/*.pdf 2>/dev/null)
+    if [[ "${j}" != "" ]]
+    then
+	pdfunite "${i}" "$SUPPCOVER" "${j}" "$COMB${i##$BODY}"
+	touch -r "${i}" "$COMB${i##$BODY}"
     fi
 done
 #
+rm ${TARGETLIST}

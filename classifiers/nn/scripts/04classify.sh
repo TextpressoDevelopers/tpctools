@@ -23,7 +23,7 @@ function usage {
     exit 1
 }
 
-LOCKFILE="/data/textpresso/tmp/03classify.lock"
+LOCKFILE="/data/textpresso/tmp/04classify.lock"
 if [[ -f "${LOCKFILE}" ]]
 then
     echo $(basename $0) "is already running."
@@ -51,11 +51,13 @@ else
     echo "Classifying papers..."
     listnew=$(mktemp)
     listold=$(mktemp)
-    sort $WORK_DIR/03classify.list.new > $listnew
-    sort $WORK_DIR/03classify.list.last > $listold
-    cp $WORK_DIR/03classify.list.new $WORK_DIR/03classify.list.last
+    sort $WORK_DIR/04classify.list.new > $listnew
+    sort $WORK_DIR/04classify.list.done > $listold
     rm $WORK_DIR/pool4predictions
     comm -23 $listnew $listold > $WORK_DIR/pool4predictions
+    listcombined=$(mktemp)
+    cat $WORK_DIR/04classify.list.new $WORK_DIR/04classify.list.done | sort | uniq > $listcombined
+    mv $listcombined $WORK_DIR/04classify.list.done
     rm $listnew $listold
     if [[ -s "$WORK_DIR/pool4predictions" ]]
     then
