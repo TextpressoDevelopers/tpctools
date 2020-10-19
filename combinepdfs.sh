@@ -25,8 +25,7 @@ rm ${BODYLIST}
 
 for i in $(cat ${TARGETLIST})
 do
-    rsync -a "${i}" "$COMB${i##$BODY}"
-
+    rsync -a $(dirname "${i}") $(dirname "$COMB${i##$BODY}")
 done
 
 ##
