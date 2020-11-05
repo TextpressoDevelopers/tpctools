@@ -40,6 +40,7 @@ void addCasFile(const char* pszInput, std::string indexdescriptor) {
     std::cout << gzfile << std::endl;
     if (boost::filesystem::path(gzfile).filename().string().find("tpcas") == std::string::npos)
         return;
+    if (boost::filesystem::is_empty(gzfile)) return;
     const char * descriptor = indexdescriptor.c_str();
     std::string tpcasfile = uncompressGzip(gzfile);
     try {
