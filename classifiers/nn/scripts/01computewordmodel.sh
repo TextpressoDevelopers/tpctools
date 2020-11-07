@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-MODEL_NAME="/data/textpresso/classifiers/nn/celegans.word"
-CAS1_DIR="/data/textpresso/tpcas-1/C. elegans"
-N_PROC=1
+MODEL_NAME="/data/textpresso/classifiers/nn/corpus.word"
+CAS1_DIR="/data/textpresso/tpcas-1"
+N_PROC=8
 
 function usage {
     echo "This script computes word models with the help of fasttext."
@@ -56,22 +56,25 @@ else
     export PATH=$PATH:/usr/local/bin
     
     echo "Compute word model..."
-
+    echo "cas-dir: " ${CAS1_DIR}
+    echo "model name: " ${MODEL_NAME}
     TMP=$(mktemp -d)
     ALLTXT=${TMP}/alltext
     rm -f $ALLTXT
-    for i in $(ls "${CAS1_DIR}")
+    IFS=$'\n'
+    for i in $(find -L "${CAS1_DIR}" -name "*tpcas.gz")
     do
-	zgrep sofaString "${CAS1_DIR}/$i/$i.tpcas.gz" 2>/dev/null \
+	TARGETFILE=$(echo "$i" | sed 's/\//_/g')
+	zgrep sofaString "$i" 2>/dev/null \
 	    | sed 's/\(.*\)sofaString="\(.*\)/\2/g' \
-	    | pdfclean.pl >${TMP}/$i.txt &
+	    | cleancas.pl >"${TMP}/${TARGETFILE}.txt" &     
 	if (( $(jobs| wc -l) > ${N_PROC} ))
 	then
 	    wait
 	fi
     done
-    cat `find ${TMP} -name "*txt"` >${ALLTXT}
-    fasttext skipgram -input ${ALLTXT} -output ${MODEL_NAME} -dim 200
+    for i in `find ${TMP} -name "*txt"`; do cat $i; rm $i; done >${ALLTXT}
+    fasttext skipgram -input ${ALLTXT} -output ${MODEL_NAME}
     rm ${MODEL_NAME}.bin
     rm -rf ${TMP}
     rm ${LOCKFILE}

@@ -51,6 +51,7 @@ else
 	esac
     done    
     echo "Creating list of files to be classified..."
+    touch ${DONE_LIST}
     listnew=$(mktemp)
     listold=$(mktemp)
     find -L "${CAS1_DIR}" -name "*tpcas.gz.tkn" | sort > ${listnew}
