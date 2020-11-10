@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-##### create indexes for all literatures in parallel with a maximum numberof parallel processes
+##### create indexes for all literatures in parallel with a maximum number of parallel processes
 
 function usage {
     echo "usage: $(basename $0) [-mph] <cas_input_dir> <indexes_output_dir>"
