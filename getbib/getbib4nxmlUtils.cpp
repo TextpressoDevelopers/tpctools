@@ -8,6 +8,8 @@
 #include <boost/filesystem/operations.hpp>
 
 std::string uncompressGzip(std::string gzFile) {
+    std::string tempFile;
+    try {
       std::ifstream filein(gzFile.c_str(), std::ios_base::in | std::ios_base::binary);
       boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
       in.push(boost::iostreams::gzip_decompressor());
@@ -21,12 +23,11 @@ std::string uncompressGzip(std::string gzFile) {
       tempFile = tempDir + "/" + tpFile;
       boost::filesystem::create_directories(tempDir);
       std::ofstream out(tempFile.c_str());
-      try {
-	boost::iostreams::copy(in, out);
-      } catch (const std::exception &e) {
-	std::cerr << "uncompressGzip Error " << e.what() << std::endl;
-      }
+      boost::iostreams::copy(in, out);
       out.close();
+    } catch (const std::exception &e) {
+      std::cerr << "uncompressGzip Error " << e.what() << std::endl;
+    }
     return tempFile;
 }
 
