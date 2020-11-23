@@ -22,20 +22,16 @@ do
 done < ${BODYLIST} > ${TARGETLIST}
 rm ${BODYLIST}
 
-
-for i in $(cat ${TARGETLIST})
-do
-    rsync -a $(dirname "${i}") $(dirname "$COMB${i##$BODY}")
-done
+rsync -a --delete-after ${BODY}/ ${COMB}/
 
 ##
 for i in $(cat ${TARGETLIST})
 do
-    d=$(dirname ${i})
+    d=$(dirname "${i}")
     j=$(ls "$SUPP${d##$BODY}"*/*.pdf 2>/dev/null)
     if [[ "${j}" != "" ]]
     then
-	pdfunite "${i}" "$SUPPCOVER" "${j}" "$COMB${i##$BODY}"
+	pdfunite "${i}" "$SUPPCOVER" ${j} "$COMB${i##$BODY}"
 	touch -r "${i}" "$COMB${i##$BODY}"
     fi
 done
