@@ -65,8 +65,12 @@ do
 
     counter=$(($i * ${NUM_PAPERS}))
     echo "22 serialization::archive 12 "${counter} > ${INDEX_OUT_DIR}/tmpindex${i}/counter.dat
-    (export INDEX_PATH=${INDEX_OUT_DIR}/tmpindex${i}; cas2index -i ${CAS_ROOT_DIR} -o ${INDEX_OUT_DIR}/tmpindex${i} -s ${NUM_PAPERS} -f ${tempdir}/${file_list}) &
+    (export INDEX_PATH=${INDEX_OUT_DIR}/tmpindex${i}; cas2index -i ${CAS_ROOT_DIR} -o ${INDEX_OUT_DIR}/tmpindex${i} -s ${NUM_PAPERS} -f ${tempdir}/${file_list}) &>/tmp/csi.$i.out &
     let i=$(($i + 1))
+    while (( $(jobs| wc -l) > 11 ))
+    do
+        sleep 600
+    done
 done
 wait
 echo "22 serialization::archive 12 "$(cat ${tempdir}/file_to_index-* | wc -l | awk '{print $1}') > ${INDEX_OUT_DIR}/counter.dat

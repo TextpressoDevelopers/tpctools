@@ -61,9 +61,9 @@ else
 	INDEX_DIR_CUR="${INDEX_DIR}_new"
     fi
     mkdir -p "${INDEX_DIR_CUR}/db"
-    create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR_CUR}
+    create_single_index.sh -m 50000 ${CAS2_DIR} ${INDEX_DIR_CUR}
     cd "${INDEX_DIR_CUR}"
-    num_subidx_step=$(echo "${PAPERS_PER_SUBINDEX}/100000" | bc)
+    num_subidx_step=$(echo "${PAPERS_PER_SUBINDEX}/50000" | bc)
     first_idx_in_master=0
     final_counter=0
     last_idx_in_master=${num_subidx_step}
