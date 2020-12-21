@@ -48,7 +48,11 @@ else
     extract_pdfbibinfo.pl  /usr/local/textpresso/celegans_bib/
     echo "Generating bib files ..."
     export TPCAS_PATH=${CAS2_DIR}
-    getbib "${CAS2_DIR}/C. elegans"
-    getbib "${CAS2_DIR}/C. elegans Supplementals"
+    getbib "${CAS2_DIR}/C. elegans" &
+    sleep 120
+    getbib "${CAS2_DIR}/C. elegans and Suppl" &
+    sleep 120
+    getbib "${CAS2_DIR}/C. elegans Supplementals" &
+    wait
     rm ${LOCKFILE}
 fi

@@ -165,38 +165,8 @@
       </df>
       <df name="classifiers">
         <df name="nn">
-          <df name="classes">
-            <df name="celegans">
-            </df>
-          </df>
-          <df name="original_dp">
-            <df name="celegans_doc_vectors">
-            </df>
-            <df name="wordembedding">
-              <df name="pdf">
-                <df name="doc_classification">
-                  <df name="classes">
-                  </df>
-                  <df name="labeledpapers">
-                  </df>
-                  <df name="labels4papers">
-                  </df>
-                  <df name="sets">
-                  </df>
-                </df>
-                <df name="models">
-                </df>
-                <df name="pdftexts">
-                </df>
-              </df>
-              <df name="scripts">
-              </df>
-            </df>
-          </df>
           <df name="scripts">
           </df>
-        </df>
-        <df name="svm">
         </df>
       </df>
       <df name="cmake">
