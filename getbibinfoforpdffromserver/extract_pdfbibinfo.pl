@@ -90,7 +90,7 @@ $dbh->disconnect;
 foreach my $s (@sections){
 
 #
-    next if (($s !~ /(^|\n)Paper/) || ($s !~ /\nAuthor/) || ($s !~ /\nTitle/));
+    next if (($s !~ /(^|\n)Paper/) || ($s !~ /\n(Author|Editor)/) || ($s !~ /\nTitle/));
 #
 
     (my $filename) = $s =~ /Paper \:[ \t]+\"(WBPaper\d{8})\"/;
