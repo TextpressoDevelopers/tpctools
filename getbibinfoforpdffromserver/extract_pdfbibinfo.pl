@@ -99,7 +99,9 @@ foreach my $s (@sections){
 #
     (my @other_names) = $s =~ /\nName[ \t]+\"(.+?)\"/g;
     (my $pmid_name) = $s =~ /\nDatabase[ \t]+\"MEDLINE\"[ \t]+\"PMID\"[ \t]+\"(\d+)\"/;
+    my @editors = $s =~ /\nEditor[ \t]+\"(.+?)\"/g;
     my @authors = $s =~ /\nAuthor[ \t]+\"(.+?)\"/g;
+    push (@authors,@editors);
     (my $aux) = $s =~ /\nVolume[ \t]+(.+)\n/;
     my @volumes = $aux =~ /\"(.+?)\"/g;
     ($aux) = $s =~ /\nPage[ \t]+(.+)\n/;
