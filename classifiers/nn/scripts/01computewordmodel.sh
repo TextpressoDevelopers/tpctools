@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 MODEL_NAME="/data/textpresso/classifiers/nn/corpus.word"
-CAS1_DIR="/data/textpresso/tpcas-1"
+CAS1_DIR="/data/textpresso/classifiers/nn/tpcas-1"
 N_PROC=8
 
 function usage {

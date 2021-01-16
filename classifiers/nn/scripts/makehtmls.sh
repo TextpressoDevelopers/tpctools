@@ -12,7 +12,7 @@ do
     echo "<body>" >> $OUT
     while read line
     do
-	echo $line | cut -f 1,6,7 -d "/" | cut -f 1 -d "." | sed 's#/#XXX#' \
+	echo $line | cut -f 1,8,9 -d "/" | cut -f 1 -d "." | sed 's#/#XXX#' \
 	    | sed 's#/#">#' | sed 's#$#</a><br>#' \
 	    | sed 's#XXX#<a target=”_blank” href="http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?curator_id=two324\&action=Search\&data_number=#' \
 	    | sed 's/^1 /LOW    /' \

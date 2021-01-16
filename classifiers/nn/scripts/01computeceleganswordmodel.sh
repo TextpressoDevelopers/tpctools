@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 MODEL_NAME="/data/textpresso/classifiers/nn/celegans.word"
-CAS1_DIR="/data/textpresso/tpcas-1/C. elegans"
+CAS1_DIR="/data/textpresso/classifiers/nn/tpcas-1/C. elegans"
 N_PROC=1
 
 function usage {

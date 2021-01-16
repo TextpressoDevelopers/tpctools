@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CAS1_DIR="/data/textpresso/tpcas-1"
+CAS1_DIR="/data/textpresso/classifiers/nn/tpcas-1"
 LIST_NAME="/data/textpresso/classifiers/nn/04classify.list.new"
 DONE_LIST="/data/textpresso/classifiers/nn/04classify.list.done"
 function usage {
