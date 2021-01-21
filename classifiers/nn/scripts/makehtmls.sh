@@ -15,6 +15,7 @@ do
 	echo $line | cut -f 1,8,9 -d "/" | cut -f 1 -d "." | sed 's#/#XXX#' \
 	    | sed 's#/#">#' | sed 's#$#</a><br>#' \
             | sed 's#XXX#<a target="_blank" href="http://tazendra.caltech.edu/~azurebrd/cgi-bin/forms/paper_display.cgi?action=Search+!\&data_number=#'\
+	    | sed 's/^0 /NEG    /' \
 	    | sed 's/^1 /LOW    /' \
 	    | sed 's/^2 /LOW    /' \
 	    | sed 's/^3 /LOW    /' \
