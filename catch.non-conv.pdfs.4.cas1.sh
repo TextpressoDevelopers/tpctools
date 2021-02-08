@@ -88,7 +88,7 @@ else
     for i in '\x1' '\x2' '\x3' '\x4' '\x5' '\x6' '\x7' '\x8' '\xE' '\xF' \
 		   '\x10' '\x11' '\x12' '\x13' '\x14' '\x15' '\x16' '\x18' '\x19' '\x1A' '\x1D' '\x1F'
     do
-	find /tmp/*.nc.dir -name "*.txt" -print0 | xargs -I % -0 -n 1 -P 8 sh -c "sed -i 's/$i//g' \"%\""  
+	find /tmp/*.nc.dir -name "*.txt" -print0 | xargs -I % -0 -n 1 -P 8 sh -c "sed -i 's/$i/ /g' \"%\""  
     done
     # run article2cas, with CAS1_DIR as CWD
     cd ${CAS1_DIR}
