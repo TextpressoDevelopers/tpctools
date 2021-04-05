@@ -12,6 +12,7 @@ import os
 import argparse
 import glob
 import psycopg2
+import time
 
 __author__ = "Valerio Arnaboldi"
 
@@ -155,6 +156,7 @@ def download_pdfs(args_delete_old, args_log_file, args_log_level, args_out_dir):
                 continue
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             urllib.request.urlretrieve(pdflink, file_path)
+            time.sleep(1.0)
             logging.info("Downloading paper: " + pdflink + " to " + file_path)
         except urllib.error.HTTPError:
             logging.error("Paper not found: " + pdflink)

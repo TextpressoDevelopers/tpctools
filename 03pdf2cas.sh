@@ -97,6 +97,5 @@ else
 	find "${folder}" -name "*tpcas" -print0 | xargs -0 -n 8 -P 8 pigz 2>/dev/null
 	rm -f /tmp/"${folder}".*.list
     done
-    catch.non-conv.pdfs.4.cas1.sh -p $PDF_DIR -c $CAS1_DIR -P $N_PROC
     rm ${LOCKFILE}
 fi

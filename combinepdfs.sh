@@ -37,3 +37,5 @@ do
 done
 #
 rm ${TARGETLIST}
+for i in `find "${COMB}" -type d`; do mv $i ${i/WBPaper/MSWBPaper}; done
+for i in `find "${COMB}" -name "*pdf"`; do mv "$i" "${i/\/WBPaper/\/MSWBPaper}"; done

@@ -55,7 +55,7 @@ else
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
     export PATH=$PATH:/usr/local/bin
     
-    echo "Generating CAS1 files ..."
+    echo "Generating CAS1 files for PDFs that defy usual conversion..."
     
     cd ${PDF_DIR}
     # obtain all the folder names in PDF_DIR then create tpcas1 folders for every corpus
