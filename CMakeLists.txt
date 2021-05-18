@@ -98,3 +98,4 @@ install(PROGRAMS cas2index/create_index_multi_literatures.sh cas2index/create_si
         pgdumps/dump.sh articles2cas/convertallarticles2cas.sh curationtasks/unpublished_pipeline.sh
         getbib/getallbibfiles.sh getbib/download_abstract.py getbib/make_bib.py
         DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(FILES SupplMatCoverSheet.pdf DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
