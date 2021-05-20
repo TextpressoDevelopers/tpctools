@@ -34,20 +34,14 @@
           <df name="CMakeTmp">
           </df>
           <df name="cmykinverter.dir">
-            <df name="CMYKInverter">
-            </df>
           </df>
           <df name="curationtasks.dir">
             <df name="curationtasks">
             </df>
           </df>
           <df name="diffhtml.dir">
-            <df name="diffhtml">
-            </df>
           </df>
           <df name="getbib.dir">
-            <df name="getbib">
-            </df>
           </df>
           <df name="getbib4nxml.dir">
             <df name="getbib">
@@ -121,6 +115,10 @@
           </df>
           <df name="diffhtml.dir">
             <df name="diffhtml">
+            </df>
+          </df>
+          <df name="downloadpdf.dir">
+            <df name="downloadpdf">
             </df>
           </df>
           <df name="getbib.dir">
@@ -255,6 +253,9 @@
       <df name="diffhtml">
         <in>cmdline.h</in>
         <in>main.cpp</in>
+      </df>
+      <df name="downloadpdf">
+        <in>downloadpdf.cpp</in>
       </df>
       <df name="getbib">
         <df name="__pycache__">

@@ -57,6 +57,9 @@ target_link_libraries(indexmerger uima boost_filesystem boost_system lucene++)
 add_executable(articles2cas articles2cas/articles2cas.cpp articles2cas/Utils.h articles2cas/Utils.cpp)
 target_link_libraries(articles2cas ${Textpresso_LIBRARY} boost_filesystem boost_system boost_program_options boost_iostreams)
 
+add_executable(downloadpdf downloadpdf/downloadpdf.cpp)
+target_link_libraries(downloadpdf xerces-c boost_program_options boost_filesystem boost_system curl)
+
 add_executable(getbib getbib/getbib.cpp getbib/getbibUtils.h getbib/getbibUtils.cpp
         TextpressoCentralGlobalDefinitions.h TextpressoCentralGlobals.h)
 target_link_libraries(getbib lucene++ xerces-c icuuc boost_system uima boost_filesystem boost_iostreams)
