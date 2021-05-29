@@ -34,14 +34,20 @@
           <df name="CMakeTmp">
           </df>
           <df name="cmykinverter.dir">
+            <df name="CMYKInverter">
+            </df>
           </df>
           <df name="curationtasks.dir">
             <df name="curationtasks">
             </df>
           </df>
           <df name="diffhtml.dir">
+            <df name="diffhtml">
+            </df>
           </df>
           <df name="getbib.dir">
+            <df name="getbib">
+            </df>
           </df>
           <df name="getbib4nxml.dir">
             <df name="getbib">

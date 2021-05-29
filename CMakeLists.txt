@@ -84,7 +84,7 @@ add_executable(diffhtml diffhtml/main.cpp diffhtml/cmdline.h)
 
 #### INSTALL ####
 
-install(TARGETS getbib getbib4nxml cas2index saveidstodb updatecorpuscounter articles2cas
+install(TARGETS downloadpdf getbib getbib4nxml cas2index saveidstodb updatecorpuscounter articles2cas
         curationtasks diffhtml cmykinverter indexmerger
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 install(PROGRAMS cas2index/create_index_multi_literatures.sh cas2index/create_single_index.sh
