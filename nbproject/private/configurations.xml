@@ -45,6 +45,10 @@
             <df name="diffhtml">
             </df>
           </df>
+          <df name="downloadpdf.dir">
+            <df name="downloadpdf">
+            </df>
+          </df>
           <df name="getbib.dir">
             <df name="getbib">
             </df>

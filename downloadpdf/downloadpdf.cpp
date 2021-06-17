@@ -167,7 +167,7 @@ namespace downloadpdf {
 
     void downloadLiteratures(const string urlParameter,
             const string downloadDir,
-            const multimap<string, string> &lits) {
+            const multimap<string, string> &lits, const bool bibonly) {
         for (auto x : lits) {
             string literature((fs::path(x.first).filename().string()));
             string url(urlParameter);
@@ -176,11 +176,12 @@ namespace downloadpdf {
             if (!fs::exists(dlDir)) fs::create_directories(dlDir);
             string destination(dlDir + "/" + x.second + ".pdf");
             string bibfile(dlDir + "/" + x.second + ".bib");
-            if (!fs::exists(destination)) {
-                cerr << destination << endl;
-                downloadFile(url.c_str(), destination.c_str());
-                sleep(1 + rand() % 8);
-            }
+            if (!fs::exists(destination))
+                if (!bibonly) {
+                    cerr << destination << endl;
+                    downloadFile(url.c_str(), destination.c_str());
+                    sleep(1 + rand() % 8);
+                }
             if (!fs::exists(bibfile)) {
                 cerr << bibfile << endl;
                 getMetadata(x.second, bibfile.c_str());
@@ -253,14 +254,17 @@ int main(int argc, char** argv) {
             "/data/textpresso/etc/download.lst");
     string literatureLists = inputtree.get<string>("Literature lists",
             "/data/textpresso/etc/literatures");
-    string downloadDir = inputtree.get<string>("Download dir",
+    string downloadDir = inputtree.get<string>("Download directory",
             "/data/textpresso/raw_files/pdf");
+    bool bibonly = inputtree.get<bool>("Bibliography only", true);
     cout << "URL parameter : " << urlParameter << endl;
     cout << "Download list : " << downloadList << endl;
     cout << "Literature lists : " << literatureLists << endl;
+    cout << "Download directory : " << downloadDir << endl;
+    cout << "Bibliography only : " << bibonly << endl;
     multimap<string, string> lits;
     dp::loadLiteratures(literatureLists, lits);
-    dp::downloadLiteratures(urlParameter, downloadDir, lits);
+    dp::downloadLiteratures(urlParameter, downloadDir, lits, bibonly);
     return ret;
 }
 
