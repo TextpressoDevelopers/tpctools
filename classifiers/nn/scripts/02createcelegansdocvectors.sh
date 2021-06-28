@@ -34,7 +34,7 @@ else
 		;;
 	    -d|--doc-model-name)
 		shift
-		DOC_WORD_MODEL_NAME="$1"
+		DOC_MODEL_NAME="$1"
 		shift
 		;;
 	    -c|--cas1-dir)
