@@ -53,6 +53,7 @@ else
     done    
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
     export PATH=$PATH:/usr/local/bin
+    rm /usr/local/textpresso/uti/excluded.tokens
     ln -s /usr/local/textpresso/etc/corpus_excluded.tokens /usr/local/textpresso/uti/excluded.tokens
     echo "Creating corpus document vectors..."
     
@@ -66,7 +67,7 @@ else
 	    printf '%s\n' "$line"
 	fi
     done < ${CASLIST} > ${TKNLIST} 
-    mldataconverter -f ${TKNLIST} -o /
+    mldataconverter -t -f ${TKNLIST} -o /
     rm ${CASLIST}
     rm ${TKNLIST}
     echo "{" > /data/textpresso/classifiers/nn/createcorpusdocvecs.json
