@@ -3,6 +3,7 @@
 MODEL_NAME="/data/textpresso/classifiers/nn/corpus.word"
 CAS1_DIR="/data/textpresso/classifiers/nn/tpcas-1"
 N_PROC=8
+DIM=200
 
 function usage {
     echo "This script computes word models with the help of fasttext."
@@ -10,7 +11,8 @@ function usage {
     echo "usage: $(basename $0) [-mcPh]"
     echo "  -m --model-name   filename of model (output) [$MODEL_NAME]."
     echo "  -c --cas1-dir     directory where cas1 are stored [$CAS1_DIR]."
-    echo "  -P --num-proc     maximum number of parallel processes [$N_PROC]."  
+    echo "  -P --num-proc     maximum number of parallel processes [$N_PROC]."
+    echo "  -d --dim          dimensionality of word vectors [$DIM]."
     echo "  -h --help         display help."
     rm ${LOCKFILE}
     exit 1
@@ -40,6 +42,11 @@ else
 	    -P|--num-proc)
 		shift
 		N_PROC=$1
+		shift
+		;;
+	    -d|--dim)
+		shift
+		DIM=$1
 		shift
 		;;
 	    -h|--help)
@@ -74,9 +81,8 @@ else
 	fi
     done
     for i in `find ${TMP} -name "*txt"`; do cat $i; rm $i; done >${ALLTXT}
-    fasttext skipgram -input ${ALLTXT} -output ${MODEL_NAME}
+    fasttext skipgram -input ${ALLTXT} -output ${MODEL_NAME} -dim ${DIM}
     rm ${MODEL_NAME}.bin
     rm -rf ${TMP}
     rm ${LOCKFILE}
 fi
-
