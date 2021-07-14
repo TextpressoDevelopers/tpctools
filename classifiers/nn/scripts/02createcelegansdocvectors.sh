@@ -3,6 +3,7 @@
 WORD_MODEL_NAME="/data/textpresso/classifiers/nn/celegans.word.vec"
 DOC_MODEL_NAME="/data/textpresso/classifiers/nn/celegans.doc"
 CAS1_DIR="/data/textpresso/classifiers/nn/tpcas-1"
+EXCLUSION_LIST="exclusion.list"
 
 function usage {
     echo "This script creates document vectors."
@@ -74,6 +75,7 @@ else
     echo "   \"task\" : \"create document vectors\"," >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
     echo "   \"document directory\" : \"${CAS1_DIR}\"," >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
     echo "   \"word model\" : \"${WORD_MODEL_NAME}\"," >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
+    echo "   \"exclusion list\" : \"${EXCLUSION_LIST}\"," >> /data/textpresso/classifiers/nn/createcorpusdocvecs.json
     echo "   \"document model\" : \"${DOC_MODEL_NAME}\"," >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
     echo "   \"normalize vectors\" : \"yes\"" >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
     echo "}" >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
