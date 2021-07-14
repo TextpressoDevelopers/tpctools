@@ -67,7 +67,7 @@ else
 	    printf '%s\n' "$line"
 	fi
     done < ${CASLIST} > ${TKNLIST} 
-    mldataconverter -t -f ${TKNLIST} -o / -t
+    mldataconverter -t -f ${TKNLIST} -o /
     rm ${CASLIST}
     rm ${TKNLIST}
     echo "{" > /data/textpresso/classifiers/nn/createcelegansdocvecs.json
