@@ -51,29 +51,30 @@ else
 		usage
 	esac
     done
-    
+
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
     export PATH=$PATH:/usr/local/bin
-    
+    rm /usr/local/textpresso/uti/excluded.tokens
+    ln -s /usr/local/textpresso/etc/celegans_excluded.tokens /usr/local/textpresso/uti/excluded.tokens  
     echo "Compute word model..."
 
-    TMP=$(mktemp -d)
-    ALLTXT=${TMP}/alltext
-    rm -f $ALLTXT
-    for i in $(ls "${CAS1_DIR}")
+    CASLIST=$(mktemp)
+    TKNLIST=$(mktemp)
+    find -L "${CAS1_DIR}" -name "*tpcas.gz" >${CASLIST}
+    while IFS='' read -r line || [[ -n "$line" ]]
     do
-	zgrep sofaString "${CAS1_DIR}/$i/$i.tpcas.gz" 2>/dev/null \
-	    | sed 's/\(.*\)sofaString="\(.*\)/\2/g' \
-	    | pdfclean.pl >${TMP}/$i.txt &
-	if (( $(jobs| wc -l) > ${N_PROC} ))
+	if [ "$line" -nt "$line.all.tkn" ]
 	then
-	    wait
+	    printf '%s\n' "$line"
 	fi
-    done
-    cat `find ${TMP} -name "*txt"` >${ALLTXT}
+    done < ${CASLIST} > ${TKNLIST} 
+    mldataconverter -a -f ${TKNLIST} -o /
+    ALLTXT=$(mktemp); rm ${ALLTXT}
+    IFS=$'\n'
+    find ${CAS1_DIR} -name "*txt" | xargs -I {} cat {} >>${ALLTXT}
     fasttext skipgram -input ${ALLTXT} -output ${MODEL_NAME} -dim 200
     rm ${MODEL_NAME}.bin
-    rm -rf ${TMP}
+    rm ${CASLIST} ${TKNLIST} ${ALLTXT}
     rm ${LOCKFILE}
 fi
 

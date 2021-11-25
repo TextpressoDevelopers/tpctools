@@ -2,7 +2,7 @@
 
 WORD_MODEL_NAME="/data/textpresso/classifiers/nn/celegans.word.vec"
 DOC_MODEL_NAME="/data/textpresso/classifiers/nn/celegans.doc"
-CAS1_DIR="/data/textpresso/classifiers/nn/tpcas-1"
+CAS1_DIR="/data/textpresso/classifiers/nn/tpcas-1/C. elegans"
 EXCLUSION_LIST="exclusion.list"
 
 function usage {
@@ -63,12 +63,12 @@ else
     find -L "${CAS1_DIR}" -name "*tpcas.gz" >${CASLIST}
     while IFS='' read -r line || [[ -n "$line" ]]
     do
-	if [ "$line" -nt "$line.tkn" ]
+	if [ "$line" -nt "$line.all.tkn" ]
 	then
 	    printf '%s\n' "$line"
 	fi
     done < ${CASLIST} > ${TKNLIST} 
-    mldataconverter -t -f ${TKNLIST} -o /
+    mldataconverter -a -f ${TKNLIST} -o /
     rm ${CASLIST}
     rm ${TKNLIST}
     echo "{" > /data/textpresso/classifiers/nn/createcelegansdocvecs.json
