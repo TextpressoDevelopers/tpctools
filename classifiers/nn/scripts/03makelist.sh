@@ -54,7 +54,7 @@ else
     touch ${DONE_LIST}
     listnew=$(mktemp)
     listold=$(mktemp)
-    find -L "${CAS1_DIR}" -name "*tpcas.gz.tkn" | sort > ${listnew}
+    find -L "${CAS1_DIR}" -name "*tkn" | sort > ${listnew}
     sort ${DONE_LIST} > ${listold}
     comm -23 ${listnew} ${listold} > ${LIST_NAME}
     rm ${listnew} ${listold}
