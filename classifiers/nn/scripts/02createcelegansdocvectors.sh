@@ -71,15 +71,16 @@ else
     mldataconverter -a -f ${TKNLIST} -o /
     rm ${CASLIST}
     rm ${TKNLIST}
-    echo "{" > /data/textpresso/classifiers/nn/createcelegansdocvecs.json
-    echo "   \"task\" : \"create document vectors\"," >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
-    echo "   \"document directory\" : \"${CAS1_DIR}\"," >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
-    echo "   \"word model\" : \"${WORD_MODEL_NAME}\"," >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
-    echo "   \"exclusion list\" : \"${EXCLUSION_LIST}\"," >> /data/textpresso/classifiers/nn/createcorpusdocvecs.json
-    echo "   \"document model\" : \"${DOC_MODEL_NAME}\"," >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
-    echo "   \"normalize vectors\" : \"yes\"" >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
-    echo "}" >> /data/textpresso/classifiers/nn/createcelegansdocvecs.json
-    we -j /data/textpresso/classifiers/nn/createcelegansdocvecs.json
-    rm /data/textpresso/classifiers/nn/createcelegansdocvecs.json
+    JFILE=$(mktemp)
+    echo "{" > $JFILE
+    echo "   \"task\" : \"create document vectors\"," >> $JFILE
+    echo "   \"document directory\" : \"${CAS1_DIR}\"," >> $JFILE
+    echo "   \"word model\" : \"${WORD_MODEL_NAME}\"," >> $JFILE
+    echo "   \"exclusion list\" : \"${EXCLUSION_LIST}\"," >> $JFILE
+    echo "   \"document model\" : \"${DOC_MODEL_NAME}\"," >> $JFILE
+    echo "   \"normalize vectors\" : \"yes\"" >> $JFILE
+    echo "}" >> $JFILE
+    we -j $JFILE
+    rm $JFILE
     rm ${LOCKFILE}
 fi
