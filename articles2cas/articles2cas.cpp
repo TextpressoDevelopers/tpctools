@@ -6,7 +6,7 @@
     @version 1.0 7/30/17.
  */
 
-#include "CASManager.h"
+#include <CASManager.h>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
@@ -44,6 +44,12 @@ void convert_dir_recursively(const string& inputDir, const string& outputDir, co
                     }
                 } catch (const std::exception &e) {
                     std::cerr << "Error " << e.what() << std::endl;
+                }
+            } else if (fileType == FileType::tai) {
+                if (dit->path().filename().string().find(".pdf") != string::npos) {
+                    cout << dit->path().string() << endl;
+                    CASManager::convert_raw_file_to_cas1(dit->path().string(), fileType, outputDir,
+                            use_parent_dir_as_outname);
                 }
             } else {
                 cout << dit->path().string() << endl;
@@ -110,6 +116,8 @@ int main(int argc, const char* argv[]) {
         ft = FileType::xml;
     } else if (fileType == 3) {
         ft = FileType::txt;
+    } else if (fileType == 4) {
+        ft = FileType::tai;
     }
     if (is_directory(inputDir)) {
         path p(inputDir);
