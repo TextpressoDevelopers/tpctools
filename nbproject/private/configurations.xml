@@ -24,8 +24,6 @@
             </df>
           </df>
           <df name="articles2cas.dir">
-            <df name="articles2cas">
-            </df>
           </df>
           <df name="cas2index.dir">
             <df name="cas2index">
@@ -33,13 +31,17 @@
           </df>
           <df name="CMakeTmp">
           </df>
+          <df name="cmykinverter.dir">
+            <df name="CMYKInverter">
+            </df>
+          </df>
           <df name="curationtasks.dir">
+            <df name="curationtasks">
+            </df>
           </df>
           <df name="diffhtml.dir">
           </df>
           <df name="downloadpdf.dir">
-            <df name="downloadpdf">
-            </df>
           </df>
           <df name="getbib.dir">
             <df name="getbib">
@@ -56,16 +58,12 @@
             </df>
           </df>
           <df name="ppm2jpg.dir">
-            <df name="ppm2jpg">
-            </df>
           </df>
           <df name="printbibfromnxmlorcasfile.dir">
             <df name="printbibfromnxmlorcasfile">
             </df>
           </df>
           <df name="saveidstodb.dir">
-            <df name="cas2index">
-            </df>
           </df>
           <df name="updatecorpuscounter.dir">
             <df name="cas2index">

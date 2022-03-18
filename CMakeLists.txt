@@ -88,9 +88,9 @@ install(TARGETS downloadpdf getbib getbib4nxml cas2index saveidstodb updatecorpu
         curationtasks diffhtml cmykinverter indexmerger
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 install(PROGRAMS cas2index/create_index_multi_literatures.sh cas2index/create_single_index.sh
-        ppm2jpg/ppm2jpgCas.sh run_tpc_pipeline_incremental.sh combinepdfs.sh 03catch.non-conv.pdfs.4.cas1.sh
-        01downloadpdfs.sh 02downloadxmls.sh 03pdf2cas.sh 03fortai.sh 04xml2cas.sh 05addimages2cas1.sh 
-        06removecas1.sh 07cas1tocas2.sh 08removecas2.sh 09getpmcoabib.sh   
+        ppm2jpg/ppm2jpgCas.sh run_tpc_pipeline_incremental.sh combinepdfs.sh tai.sh 03catch.non-conv.pdfs.4.cas1.sh
+        01downloadpdfs.sh 01downloadpdfs4tai.sh 02downloadxmls.sh 03pdf2cas.sh 03pdf2cas4tai.sh 04xml2cas.sh 
+        05addimages2cas1.sh 06removecas1.sh 07cas1tocas2.sh 08removecas2.sh 09getpmcoabib.sh   
         10getcelegansbib.sh 11invertimages.sh 12index.sh
 	classifiers/nn/scripts/01computeceleganswordmodel.sh classifiers/nn/scripts/02createcelegansdocvectors.sh
         classifiers/nn/scripts/01computewordmodel.sh classifiers/nn/scripts/02createdocvectors.sh   

@@ -125,7 +125,7 @@ namespace downloadpdf {
         return written;
     }
 
-    void downloadFile(const char* url, const char* outfilename) {
+    CURLcode downloadFile(const char* url, const char* outfilename) {
         CURL *curl;
         FILE *fp;
         CURLcode res;
@@ -142,6 +142,7 @@ namespace downloadpdf {
             curl_easy_cleanup(curl);
             fclose(fp);
         }
+        return res;
     }
 
     void saveString2file(const char* filename, const string &s) {
@@ -154,23 +155,24 @@ namespace downloadpdf {
         }
     }
 
-    void getMetadata(string pmcid, const char* outfilename) {
+    void getMetadata(const string& metaUrlParameter, string pmcid, const char* outfilename) {
         ba::replace_first(pmcid, "PMC", "");
-        string baseurl("https://www.ncbi.nlm.nih.gov/pmc/oai/oai.cgi"
-                "?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:%s&metadataPrefix=oai_dc");
+        string baseurl(metaUrlParameter);
         ba::replace_first(baseurl, "%s", pmcid);
         string destination("/tmp/PMC" + pmcid);
-        downloadFile(baseurl.c_str(), destination.c_str());
+        CURLcode cc = downloadFile(baseurl.c_str(), destination.c_str());
+        if (cc != CURLcode::CURLE_OK)
+            cerr << "Error downloading meta data! " << curl_easy_strerror(cc) << endl;
         saveString2file(outfilename, parseXML(destination.c_str()));
         remove(destination.c_str());
     }
 
-    void downloadLiteratures(const string urlParameter,
-            const string downloadDir,
+    void downloadLiteratures(const string pdfUrlParameter,
+            const string metaUrlParameter, const string downloadDir,
             const multimap<string, string> &lits, const bool bibonly) {
         for (auto x : lits) {
             string literature((fs::path(x.first).filename().string()));
-            string url(urlParameter);
+            string url(pdfUrlParameter);
             ba::replace_first(url, "%s", x.second);
             string dlDir(downloadDir + "/" + literature + "/" + x.second);
             if (!fs::exists(dlDir)) fs::create_directories(dlDir);
@@ -179,12 +181,14 @@ namespace downloadpdf {
             if (!fs::exists(destination))
                 if (!bibonly) {
                     cerr << destination << endl;
-                    downloadFile(url.c_str(), destination.c_str());
+                    CURLcode cc = downloadFile(url.c_str(), destination.c_str());
+                    if (cc != CURLcode::CURLE_OK)
+                        std::cerr << "Error downloading pdf file! " << curl_easy_strerror(cc) << std::endl;
                     sleep(1 + rand() % 8);
                 }
             if (!fs::exists(bibfile)) {
                 cerr << bibfile << endl;
-                getMetadata(x.second, bibfile.c_str());
+                getMetadata(metaUrlParameter, x.second, bibfile.c_str());
                 sleep(1 + rand() % 2);
             }
         }
@@ -248,23 +252,29 @@ int main(int argc, char** argv) {
         cerr << "Error: " << e.what() << "\n";
         return (EXIT_FAILURE);
     }
-    string urlParameter = inputtree.get<string>("URL parameter",
+    string pdfUrlParameter = inputtree.get<string>("PDF URL parameter",
             "https://www.ncbi.nlm.nih.gov/pmc/articles/%s/pdf/");
-    string downloadList = inputtree.get<string>("Download list",
-            "/data/textpresso/etc/download.lst");
+    string metaUrlParameter = inputtree.get<string>("Meta data URL parameter",
+            "https://www.ncbi.nlm.nih.gov/pmc/oai/oai.cgi?verb=GetRecord"
+            "&identifier=oai:pubmedcentral.nih.gov:%s&metadataPrefix=oai_dc");
     string literatureLists = inputtree.get<string>("Literature lists",
             "/data/textpresso/etc/literatures");
     string downloadDir = inputtree.get<string>("Download directory",
             "/data/textpresso/raw_files/pdf");
     bool bibonly = inputtree.get<bool>("Bibliography only", true);
-    cout << "URL parameter : " << urlParameter << endl;
-    cout << "Download list : " << downloadList << endl;
+    cout << "PDF URL parameter : " << pdfUrlParameter << endl;
+    cout << "Meta data URL parameter : " << metaUrlParameter << endl;
     cout << "Literature lists : " << literatureLists << endl;
     cout << "Download directory : " << downloadDir << endl;
-    cout << "Bibliography only : " << bibonly << endl;
+    cout << "Bibliography only : ";
+    if (bibonly)
+        cout << "true";
+    else
+        cout << "false";
+    cout << endl;
     multimap<string, string> lits;
     dp::loadLiteratures(literatureLists, lits);
-    dp::downloadLiteratures(urlParameter, downloadDir, lits, bibonly);
+    dp::downloadLiteratures(pdfUrlParameter, metaUrlParameter, downloadDir, lits, bibonly);
     return ret;
 }
 
