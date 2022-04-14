@@ -17,6 +17,7 @@
 #include <xercesc/sax/HandlerBase.hpp>
 #include <xercesc/util/XMLString.hpp>
 #include <xercesc/util/PlatformUtils.hpp>
+#include <thread>
 
 
 using namespace std;
@@ -27,7 +28,7 @@ namespace downloadpdf {
 
     void join(DOMNodeList* list, string c, string& s) {
         s.clear();
-        for (int i = 0; i < list->getLength(); i++) {
+        for (XMLSize_t i = 0; i < list->getLength(); i++) {
             s += XMLString::transcode(list->item(i)->getTextContent());
             if (i != list->getLength() - 1) s += c;
         }
@@ -56,61 +57,135 @@ namespace downloadpdf {
             parser->parse(xmlFile);
         } catch (const XMLException& toCatch) {
             char* message = XMLString::transcode(toCatch.getMessage());
-            cout << "Exception message is: \n"
+            cerr << "parseXML: Exception message is: \n"
                     << message << "\n";
             XMLString::release(&message);
             return ret;
         } catch (const DOMException& toCatch) {
             char* message = XMLString::transcode(toCatch.msg);
-            cout << "Exception message is: \n"
+            cerr << "parseXML: Exception message is: \n"
                     << message << "\n";
             XMLString::release(&message);
             return ret;
         } catch (...) {
-            cout << "Unexpected Exception \n";
+            cerr << "parseXML: Unexpected Exception \n";
             return ret;
         }
         DOMDocument* doc = parser->adoptDocument();
         //
-        XMLCh* temp = XMLString::transcode("dc:creator");
-        DOMNodeList* list = doc->getElementsByTagName(temp);
-        string line;
-        join(list, "; ", line);
-        ret = "author|" + line + "\n";
-        //
-        temp = XMLString::transcode("dc:identifier");
+        XMLCh *temp = XMLString::transcode("OAI-PMH");
+        DOMNodeList *list = doc->getElementsByTagName(temp);
+        bool is_oai_pmh = list->getLength() > 0;
+        temp = XMLString::transcode("PubmedArticleSet");
         list = doc->getElementsByTagName(temp);
-        join(list, "; ", line);
-        ret += "accession|" + line + "\n";
+        bool is_pubmedArticleSet = list->getLength() > 0;
         //
-        temp = XMLString::transcode("dc:subject");
-        list = doc->getElementsByTagName(temp);
-        join(list, "; ", line);
-        ret += "type|" + line + "\n";
-        //
-        temp = XMLString::transcode("dc:title");
-        list = doc->getElementsByTagName(temp);
-        join(list, "; ", line);
-        ret += "title|" + line + "\n";
-        //
-        temp = XMLString::transcode("dc:source");
-        list = doc->getElementsByTagName(temp);
-        join(list, "; ", line);
-        ret += "journal|" + line + "\n";
-        //
-        ret += "citation| not available\n";
-        //
-        temp = XMLString::transcode("dc:date");
-        list = doc->getElementsByTagName(temp);
-        join(list, "; ", line);
-        ret += "year|" + line + "\n";
-        //
-        //
-        temp = XMLString::transcode("dc:description");
-        list = doc->getElementsByTagName(temp);
-        join(list, "; ", line);
-        ret += "abstract|" + line + "\n";
-        //        
+        if (is_oai_pmh) {
+            temp = XMLString::transcode("dc:creator");
+            list = doc->getElementsByTagName(temp);
+            string line;
+            join(list, "; ", line);
+            ret = "author|" + line + "\n";
+            //
+            temp = XMLString::transcode("dc:identifier");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "accession|" + line + "\n";
+            //
+            temp = XMLString::transcode("dc:subject");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "type|" + line + "\n";
+            //
+            temp = XMLString::transcode("dc:title");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "title|" + line + "\n";
+            //
+            temp = XMLString::transcode("dc:source");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "journal|" + line + "\n";
+            //
+            ret += "citation| not available\n";
+            //
+            temp = XMLString::transcode("dc:date");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "year|" + line + "\n";
+            //
+            temp = XMLString::transcode("dc:description");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "abstract|" + line + "\n";
+            //
+        } else if (is_pubmedArticleSet) {
+            temp = XMLString::transcode("LastName");
+            list = doc->getElementsByTagName(temp);
+            temp = XMLString::transcode("ForeName");
+            DOMNodeList *auxlist = doc->getElementsByTagName(temp);
+            string line;
+            for (XMLSize_t i = 0; i < list->getLength(); i++) {
+                line += XMLString::transcode(list->item(i)->getTextContent());
+                line += " ";
+                if (auxlist->getLength() > i)
+                    line += XMLString::transcode(auxlist->item(i)->getTextContent());
+                if (i != list->getLength() - 1) line += "; ";
+            }
+            ret = "author|" + line + "\n";
+            //
+            temp = XMLString::transcode("PMID");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "accession|" + line + "\n";
+            //
+            temp = XMLString::transcode("PublicationType");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "type|" + line + "\n";
+            //
+            temp = XMLString::transcode("ArticleTitle");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "title|" + line + "\n";
+            //
+            temp = XMLString::transcode("Title");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "journal|" + line + "\n";
+            //
+            temp = XMLString::transcode("JournalIssue");
+            list = doc->getElementsByTagName(temp);
+            line.clear();
+            if (list->getLength() > 0) {
+                DOMNodeList *children = list->item(0)->getChildNodes();
+                if (children->getLength() > 1) {
+                    line += XMLString::transcode(children->item(0)->getNodeName()) + string(" ");
+                    line += XMLString::transcode(children->item(0)->getTextContent()) + string(" ");
+                    line += XMLString::transcode(children->item(1)->getNodeName()) + string(" ");
+                    line += XMLString::transcode(children->item(1)->getTextContent());
+                }
+            } else
+                line = "not available";
+            ret += "citation|" + line + "\n";
+            //
+            temp = XMLString::transcode("PubDate");
+            list = doc->getElementsByTagName(temp);
+            line.clear();
+            if (list->getLength() > 0) {
+                DOMNodeList *children = list->item(0)->getChildNodes();
+                for (XMLSize_t i = 0; i < children->getLength(); i++) {
+                    line += XMLString::transcode(children->item(i)->getTextContent());
+                    if (i != children->getLength() - 1) line += "-";
+                }
+            }
+            ret += "year|" + line + "\n";
+            //
+            temp = XMLString::transcode("Abstract");
+            list = doc->getElementsByTagName(temp);
+            join(list, "; ", line);
+            ret += "abstract|" + line + "\n";
+        }
         XMLString::release(&temp);
         if (doc) doc->release();
         ////
@@ -155,42 +230,63 @@ namespace downloadpdf {
         }
     }
 
-    void getMetadata(const string& metaUrlParameter, string pmcid, const char* outfilename) {
-        ba::replace_first(pmcid, "PMC", "");
+    void getMetadata(const string& metaUrlParameter, string id, const char* outfilename) {
+        ba::replace_first(id, "PMC", "");
         string baseurl(metaUrlParameter);
-        ba::replace_first(baseurl, "%s", pmcid);
-        string destination("/tmp/PMC" + pmcid);
+        ba::replace_first(baseurl, "%s", id);
+        string destination("/tmp/" + id);
         CURLcode cc = downloadFile(baseurl.c_str(), destination.c_str());
         if (cc != CURLcode::CURLE_OK)
             cerr << "Error downloading meta data! " << curl_easy_strerror(cc) << endl;
-        saveString2file(outfilename, parseXML(destination.c_str()));
+        string x(parseXML(destination.c_str()));
+        if (!x.empty())
+            saveString2file(outfilename, x);
         remove(destination.c_str());
     }
 
-    void downloadLiteratures(const string pdfUrlParameter,
-            const string metaUrlParameter, const string downloadDir,
-            const multimap<string, string> &lits, const bool bibonly) {
-        for (auto x : lits) {
-            string literature((fs::path(x.first).filename().string()));
+    void processEntry(const string lit, const string file, const string pdfUrlParameter,
+            const string metaUrlParameter, const string downloadDir, const bool bibonly) {
+        if (!file.empty()) {
+            string literature((fs::path(lit).filename().string()));
             string url(pdfUrlParameter);
-            ba::replace_first(url, "%s", x.second);
-            string dlDir(downloadDir + "/" + literature + "/" + x.second);
+            ba::replace_first(url, "%s", file);
+            string dlDir(downloadDir + "/" + literature + "/" + file);
             if (!fs::exists(dlDir)) fs::create_directories(dlDir);
-            string destination(dlDir + "/" + x.second + ".pdf");
-            string bibfile(dlDir + "/" + x.second + ".bib");
+            string destination(dlDir + "/" + file + ".pdf");
+            string bibfile(dlDir + "/" + file + ".bib");
             if (!fs::exists(destination))
                 if (!bibonly) {
                     cerr << destination << endl;
                     CURLcode cc = downloadFile(url.c_str(), destination.c_str());
                     if (cc != CURLcode::CURLE_OK)
                         std::cerr << "Error downloading pdf file! " << curl_easy_strerror(cc) << std::endl;
-                    sleep(1 + rand() % 8);
                 }
             if (!fs::exists(bibfile)) {
                 cerr << bibfile << endl;
-                getMetadata(metaUrlParameter, x.second, bibfile.c_str());
-                sleep(1 + rand() % 2);
+                getMetadata(metaUrlParameter, file, bibfile.c_str());
             }
+        }
+    }
+
+    void downloadLiteratures(const string pdfUrlParameter,
+            const string metaUrlParameter, const string downloadDir,
+            const multimap<string, string> &lits, const bool bibonly) {
+        std::vector<std::thread*> threadvec;
+        for (auto x : lits) {
+            threadvec.push_back(new std::thread(processEntry, x.first, x.second,
+                    pdfUrlParameter, metaUrlParameter, downloadDir, bibonly));
+            sleep(1 + rand() % 2);
+            if (threadvec.size() > 20)
+                while (threadvec.size() > 0) {
+                    threadvec.back()->join();
+                    delete threadvec.back();
+                    threadvec.pop_back();
+                }
+        }
+        while (threadvec.size() > 0) {
+            threadvec.back()->join();
+            delete threadvec.back();
+            threadvec.pop_back();
         }
     }
 

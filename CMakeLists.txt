@@ -58,7 +58,7 @@ add_executable(articles2cas articles2cas/articles2cas.cpp articles2cas/Utils.h a
 target_link_libraries(articles2cas ${Textpresso_LIBRARY} boost_filesystem boost_system boost_program_options boost_iostreams)
 
 add_executable(downloadpdf downloadpdf/downloadpdf.cpp)
-target_link_libraries(downloadpdf xerces-c boost_program_options boost_filesystem boost_system curl)
+target_link_libraries(downloadpdf xerces-c boost_program_options boost_filesystem boost_system curl pthread)
 
 add_executable(getbib getbib/getbib.cpp getbib/getbibUtils.h getbib/getbibUtils.cpp
         TextpressoCentralGlobalDefinitions.h TextpressoCentralGlobals.h)
