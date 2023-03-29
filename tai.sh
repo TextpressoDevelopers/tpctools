@@ -19,7 +19,7 @@ rm ${BODYLIST}
 ##
 for i in $(cat ${TARGETLIST})
 do
-    pdf2txtimg $i &
+    timeout 5m pdf2txtimg $i &
     while (( $(jobs| wc -l) > 20 ))
     do
         sleep 1
