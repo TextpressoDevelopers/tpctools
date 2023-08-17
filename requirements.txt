@@ -1,0 +1,9 @@
+python-jose==3.2.0
+python-multipart==0.0.5
+python-dotenv==0.17.0
+
+git+https://github.com/alliance-genome/agr_fastapi_okta@v1.1#egg=fastapi_okta
+requests==2.30.0
+urllib3==1.26.15
+python-dateutil
+
